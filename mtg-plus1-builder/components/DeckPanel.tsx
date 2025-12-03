@@ -62,7 +62,10 @@ export default function DeckPanel({
         }
     } else {
         // その他の形式も同じ構造で出力しておくと便利
-        fullText = `Deck\n${mainText}\n\nSideboard\n${sideText}`;
+      let fullText = `Deck\n${mainText}`;
+      if (sideboard.length > 0) {
+        fullText += `\n\nSideboard\n${sideText}`;
+      }
     }
 
     navigator.clipboard.writeText(fullText).then(() => {

@@ -51,7 +51,7 @@ export default function Home() {
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, deckName]);
+  }, [deck, sideboard, deckName]);
 
   // 検索処理
   const executeSearch = async (queryWithOptions: string) => {
@@ -82,7 +82,7 @@ export default function Home() {
       if (idx >= 0) {
         const newDeck = [...prev];
         // 4枚制限 (基本土地以外)
-        if (newDeck[idx].quantity < 4) {
+        if (newDeck[idx].type_line.includes("Basic Land") || newDeck[idx].quantity < 4) {
              newDeck[idx] = { ...newDeck[idx], quantity: newDeck[idx].quantity + 1 };
         }
         return newDeck;
@@ -103,33 +103,86 @@ export default function Home() {
     });
   };
 
-  const unifyDeckLanguage = async () => {
+const unifyDeckLanguage = async () => {
     if ((deck.length === 0 && sideboard.length === 0) || !confirm("デッキ内の言語を統一しますか？")) return;
     setProcessing(true);
-    
-    // ヘルパー: 指定リストを変換
-    const convertList = async (list: DeckCard[]) => {
-      const newList: DeckCard[] = [];
-      for (const card of list) {
-        try {
-          const url = `https://api.scryfall.com/cards/${card.set}/${card.collector_number}/${language}`;
-          const res = await fetch(url);
-          if (res.ok) {
-            const data: Card = await res.json();
-            newList.push({ ...data, quantity: card.quantity });
-          } else { newList.push(card); }
-        } catch { newList.push(card); }
-        await new Promise(r => setTimeout(r, 50));
-      }
-      return newList;
-    };
 
     try {
-      const newMain = await convertList(deck);
-      setDeck(newMain);
-      const newSide = await convertList(sideboard);
-      setSideboard(newSide);
-    } finally { setProcessing(false); }
+      // 1. デッキとサイドボードに含まれる「ユニークなカード（セット+番号）」を抽出
+      const allCards = [...deck, ...sideboard];
+      const uniqueKeys = new Set<string>();
+      const cardsToFetch: { set: string; cn: string }[] = [];
+
+      allCards.forEach(card => {
+        const key = `${card.set}:${card.collector_number}`;
+        if (!uniqueKeys.has(key)) {
+          uniqueKeys.add(key);
+          cardsToFetch.push({ set: card.set, cn: card.collector_number });
+        }
+      });
+
+      if (cardsToFetch.length === 0) {
+        setProcessing(false);
+        return;
+      }
+
+      // 2. Scryfall Search APIを使ってバッチ取得 (URL長制限回避のため30枚ずつチャンク分割)
+      // クエリ例: (set:neo cn:1 lang:ja) or (set:neo cn:2 lang:ja) ...
+      const BATCH_SIZE = 30;
+      const fetchedCardsMap = new Map<string, Card>();
+
+      for (let i = 0; i < cardsToFetch.length; i += BATCH_SIZE) {
+        const chunk = cardsToFetch.slice(i, i + BATCH_SIZE);
+        
+        // クエリの組み立て
+        const queryParts = chunk.map(c => `(set:${c.set} cn:${c.cn} lang:${language})`);
+        const query = queryParts.join(" or ");
+        
+        try {
+          // unique:prints を指定して特定の版・言語を狙う
+          const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=prints`;
+          const res = await fetch(url);
+          const data = await res.json();
+
+          if (data.data) {
+            data.data.forEach((c: Card) => {
+              // 取得したカードをマップに保存 (Key: set:cn)
+              fetchedCardsMap.set(`${c.set}:${c.collector_number}`, c);
+            });
+          }
+        } catch (e) {
+          console.error("Batch fetch failed", e);
+        }
+        
+        // API負荷軽減のウェイト (検索APIは少し重いため)
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      // 3. 取得したデータでデッキを更新するヘルパー関数
+      const updateList = (list: DeckCard[]) => {
+        return list.map(card => {
+          const key = `${card.set}:${card.collector_number}`;
+          const newCardData = fetchedCardsMap.get(key);
+          
+          if (newCardData) {
+            // 見つかった場合はデータを差し替え（枚数は維持）
+            return { ...newCardData, quantity: card.quantity };
+          }
+          // 見つからなかった（その言語版が存在しない等）場合は元のまま
+          return card;
+        });
+      };
+
+      // デッキとサイドを更新
+      setDeck(updateList(deck));
+      setSideboard(updateList(sideboard));
+
+    } catch (error) {
+      console.error("Language unification failed", error);
+      alert("変換中にエラーが発生しました。");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   return (
