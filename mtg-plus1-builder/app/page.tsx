@@ -186,7 +186,8 @@ export default function Home() {
 
           <Panel defaultSize={50} minSize={30}>
             <DeckPanel 
-              deck={deck} 
+              deck={deck}
+              sideboard={sideboard}
               deckName={deckName}
               onChangeDeckName={setDeckName}
               onRemove={removeFromDeck} 
