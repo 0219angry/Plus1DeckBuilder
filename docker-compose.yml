@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # ローカルのファイルをコンテナに同期（ホットリロード用）
+      - ./:/app
+      # 重要: コンテナ内のnode_modulesをローカルで上書きしないようにする設定
+      - /app/node_modules
+      # Next.jsのビルドキャッシュ用
+      - /app/.next
+    environment:
+      # WSL2でのファイル変更検知（ホットリロード）を確実にする設定
+      - WATCHPACK_POLLING=true
+      # または
+      - CHOKIDAR_USEPOLLING=true
