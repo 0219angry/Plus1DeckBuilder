@@ -32,6 +32,8 @@ export default function Home() {
           setDeck(parsed.cards || []);
           setSideboard(parsed.sideboard || []); // サイドボード復元
           setDeckName(parsed.name || "Untitled Deck");
+          if (parsed.selectedSet) setSelectedSet(parsed.selectedSet);
+          if (parsed.language) setLanguage(parsed.language);
         } else if (Array.isArray(parsed)) {
           // 旧形式互換
           setDeck(parsed);
@@ -47,11 +49,13 @@ export default function Home() {
         name: deckName,
         cards: deck,
         sideboard: sideboard,
+        selectedSet: selectedSet,
+        language: language,
         updatedAt: new Date().toISOString()
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, sideboard, deckName]);
+  }, [deck, sideboard, deckName, selectedSet, language]);
 
   // 検索処理
   const executeSearch = async (queryWithOptions: string) => {
