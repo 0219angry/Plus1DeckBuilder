@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { Card, DeckCard, EXPANSIONS, LANGUAGES } from "@/types";
+import { Card, DeckCard, EXPANSIONS, LANGUAGES, Expansion } from "@/types";
 import SearchPanel from "@/components/SearchPanel";
 import DeckPanel from "@/components/DeckPanel";
 import Footer from "@/components/Footer";
+import { useAllowedSets } from "@/hooks/useAllowedSets";
 
 export default function Home() {
   const [selectedSet, setSelectedSet] = useState("neo");
@@ -15,34 +16,47 @@ export default function Home() {
   
   // デッキ名ステート
   const [deckName, setDeckName] = useState("Untitled Deck");
-  const [deck, setDeck] = useState<DeckCard[]>([]);           // メイン
-  const [sideboard, setSideboard] = useState<DeckCard[]>([]); // サイド
+  const [deck, setDeck] = useState<DeckCard[]>([]);
+  const [sideboard, setSideboard] = useState<DeckCard[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  // LocalStorage読み込み (マイグレーション対応)
+  // Firestoreから許可セットを取得
+  const { allowedSets, loading: setsLoading } = useAllowedSets();
+
+  // 表示用エキスパンションリストの生成
+  const displayExpansions = useMemo(() => {
+    if (setsLoading) return EXPANSIONS;
+    if (allowedSets.length === 0) return EXPANSIONS;
+    return allowedSets;
+  }, [allowedSets, setsLoading]);
+
+  // DeckPanelに渡すためのコード配列を作成
+  const legalSetCodes = useMemo(() => {
+    return displayExpansions.map(ex => ex.code);
+  }, [displayExpansions]);
+
+  // LocalStorage読み込み
   useEffect(() => {
     const savedData = localStorage.getItem("mtg-plus1-deck");
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
-        // 新形式: { name, cards, sideboard } に対応させる
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
           setDeck(parsed.cards || []);
-          setSideboard(parsed.sideboard || []); // サイドボード復元
+          setSideboard(parsed.sideboard || []);
           setDeckName(parsed.name || "Untitled Deck");
           if (parsed.selectedSet) setSelectedSet(parsed.selectedSet);
           if (parsed.language) setLanguage(parsed.language);
         } else if (Array.isArray(parsed)) {
-          // 旧形式互換
           setDeck(parsed);
         }
       } catch (e) { console.error(e); }
     }
   }, []);
 
-  // LocalStorage保存 (オブジェクト形式)
+  // LocalStorage保存
   useEffect(() => {
     if (deck.length > 0 || deckName !== "Untitled Deck") {
       const dataToSave = {
@@ -80,12 +94,10 @@ export default function Home() {
   // デッキ操作
   const addToDeck = (card: Card, target: "main" | "side" = "main") => {
     const setTargetDeck = target === "main" ? setDeck : setSideboard;
-    
     setTargetDeck((prev) => {
       const idx = prev.findIndex((c) => c.id === card.id);
       if (idx >= 0) {
         const newDeck = [...prev];
-        // 4枚制限 (基本土地以外)
         if (newDeck[idx].type_line.includes("Basic Land") || newDeck[idx].quantity < 4) {
              newDeck[idx] = { ...newDeck[idx], quantity: newDeck[idx].quantity + 1 };
         }
@@ -97,7 +109,6 @@ export default function Home() {
 
   const removeFromDeck = (card: Card, target: "main" | "side") => {
     const setTargetDeck = target === "main" ? setDeck : setSideboard;
-
     setTargetDeck((prev) => {
       const next = prev.map((c) => {
         if (c.id === card.id) return { ...c, quantity: c.quantity - 1 };
@@ -107,109 +118,171 @@ export default function Home() {
     });
   };
 
-const unifyDeckLanguage = async () => {
-    if ((deck.length === 0 && sideboard.length === 0) || !confirm("デッキ内の言語を統一しますか？")) return;
+  const handleQuantityChange = (targetCard: DeckCard, amount: number, target: "main" | "side") => {
+    const updateList = (list: DeckCard[]) => {
+      return list.map(card => {
+        if (card.id === targetCard.id) {
+          const newQuantity = Math.max(1, card.quantity + amount);
+          return { ...card, quantity: newQuantity };
+        }
+        return card;
+      });
+    };
+    if (target === "main") {
+      setDeck(prev => updateList(prev));
+    } else {
+      setSideboard(prev => updateList(prev));
+    }
+  };
+
+  const unifyDeckLanguage = async () => {
+    const BASIC_LANDS = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
+    
+    if ((deck.length === 0 && sideboard.length === 0) || !confirm("デッキ内の言語を統一しますか？\n（基本土地は選択したセットに、範囲外のカードは適正なセットに自動変換されます）")) return;
+    
     setProcessing(true);
 
     try {
-      // 1. デッキとサイドボードに含まれる「ユニークなカード（セット+番号）」を抽出
       const allCards = [...deck, ...sideboard];
-      const uniqueKeys = new Set<string>();
-      const cardsToFetch: { set: string; cn: string }[] = [];
+      const validCardKeys = new Set<string>();
+      const nameSearchKeys = new Set<string>();
 
       allCards.forEach(card => {
-        const key = `${card.set}:${card.collector_number}`;
-        if (!uniqueKeys.has(key)) {
-          uniqueKeys.add(key);
-          cardsToFetch.push({ set: card.set, cn: card.collector_number });
+        const isBasic = BASIC_LANDS.includes(card.name);
+        const isSetValid = card.set.toLowerCase() === "fdn" || card.set.toLowerCase() === selectedSet.toLowerCase();
+
+        if (isBasic) {
+          nameSearchKeys.add(card.name);
+        } else if (!isSetValid) {
+          nameSearchKeys.add(card.name);
+        } else {
+          validCardKeys.add(`${card.set.toLowerCase()}:${card.collector_number}`);
         }
       });
 
-      if (cardsToFetch.length === 0) {
+      const queryParts: string[] = [];
+      validCardKeys.forEach(key => {
+        const [s, cn] = key.split(":");
+        queryParts.push(`(set:${s} cn:"${cn}" lang:${language})`);
+      });
+      nameSearchKeys.forEach(name => {
+        queryParts.push(`(name:"${name}" (set:${selectedSet} OR set:fdn) lang:${language})`);
+      });
+
+      if (queryParts.length === 0) {
         setProcessing(false);
         return;
       }
 
-      // 2. Scryfall Search APIを使ってバッチ取得 (URL長制限回避のため30枚ずつチャンク分割)
-      // クエリ例: (set:neo cn:1 lang:ja) or (set:neo cn:2 lang:ja) ...
-      const BATCH_SIZE = 30;
+      const BATCH_SIZE = 15;
       const fetchedCardsMap = new Map<string, Card>();
+      const fetchedNameMap = new Map<string, Card>();
 
-      for (let i = 0; i < cardsToFetch.length; i += BATCH_SIZE) {
-        const chunk = cardsToFetch.slice(i, i + BATCH_SIZE);
-        
-        // クエリの組み立て
-        const queryParts = chunk.map(c => `(set:${c.set} cn:${c.cn} lang:${language})`);
-        const query = queryParts.join(" or ");
-        
+      for (let i = 0; i < queryParts.length; i += BATCH_SIZE) {
+        const chunk = queryParts.slice(i, i + BATCH_SIZE);
+        const query = chunk.join(" or ");
         try {
-          // unique:prints を指定して特定の版・言語を狙う
           const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=prints`;
           const res = await fetch(url);
+          if (!res.ok) continue;
           const data = await res.json();
 
           if (data.data) {
             data.data.forEach((c: Card) => {
-              // 取得したカードをマップに保存 (Key: set:cn)
-              fetchedCardsMap.set(`${c.set}:${c.collector_number}`, c);
+              if (c.lang !== language) return;
+              fetchedCardsMap.set(`${c.set.toLowerCase()}:${c.collector_number}`, c);
+              const existing = fetchedNameMap.get(c.name);
+              if (!existing) {
+                fetchedNameMap.set(c.name, c);
+              } else {
+                const currentIsSelected = existing.set.toLowerCase() === selectedSet.toLowerCase();
+                const newIsSelected = c.set.toLowerCase() === selectedSet.toLowerCase();
+                const isBasic = BASIC_LANDS.includes(c.name);
+                let shouldUpdate = false;
+
+                if (newIsSelected && !currentIsSelected) {
+                  shouldUpdate = true;
+                } else if (newIsSelected === currentIsSelected) {
+                    if (isBasic && !!c.full_art !== !!existing.full_art) {
+                        shouldUpdate = !!c.full_art;
+                    } else {
+                        const numA = parseInt(c.collector_number);
+                        const numB = parseInt(existing.collector_number);
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                          if (numA < numB) shouldUpdate = true;
+                        } else {
+                          if (c.collector_number < existing.collector_number) shouldUpdate = true;
+                        }
+                    }
+                }
+                if (shouldUpdate) {
+                    fetchedNameMap.set(c.name, c);
+                }
+              }
             });
           }
-        } catch (e) {
-          console.error("Batch fetch failed", e);
-        }
-        
-        // API負荷軽減のウェイト (検索APIは少し重いため)
+        } catch (e) { console.error("Batch error", e); }
         await new Promise(r => setTimeout(r, 100));
       }
 
-      // 3. 取得したデータでデッキを更新するヘルパー関数
       const updateList = (list: DeckCard[]) => {
         return list.map(card => {
-          const key = `${card.set}:${card.collector_number}`;
-          const newCardData = fetchedCardsMap.get(key);
-          
-          if (newCardData) {
-            // 見つかった場合はデータを差し替え（枚数は維持）
-            return { ...newCardData, quantity: card.quantity };
+          const isBasic = BASIC_LANDS.includes(card.name);
+          const isSetValid = card.set.toLowerCase() === "fdn" || card.set.toLowerCase() === selectedSet.toLowerCase();
+          if (isBasic || !isSetValid) {
+            const newCard = fetchedNameMap.get(card.name);
+            if (newCard) return { ...newCard, quantity: card.quantity };
           }
-          // 見つからなかった（その言語版が存在しない等）場合は元のまま
+          const key = `${card.set.toLowerCase()}:${card.collector_number}`;
+          const newCardById = fetchedCardsMap.get(key);
+          if (newCardById) return { ...newCardById, quantity: card.quantity };
           return card;
         });
       };
 
-      // デッキとサイドを更新
       setDeck(updateList(deck));
       setSideboard(updateList(sideboard));
 
     } catch (error) {
-      console.error("Language unification failed", error);
+      console.error(error);
       alert("変換中にエラーが発生しました。");
     } finally {
       setProcessing(false);
     }
   };
 
+  const handleImportDeck = (newMain: DeckCard[], newSide: DeckCard[], importedName?: string) => {
+    if (confirm("現在のデッキを上書きしてインポートしますか？")) {
+      setDeck(newMain);
+      setSideboard(newSide);
+      if (importedName) {
+        setDeckName(importedName);
+      } else {
+        setDeckName("Imported Deck");
+      }
+    }
+  };
+
   return (
     <main className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden">
       
-      {/* 復活させたヘッダーエリア */}
       <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0">
         <h1 className="text-lg font-bold mr-2 text-blue-400">MtG PLUS1</h1>
         
-        {/* セット選択 */}
+        {/* セット選択（Firestore連動 + 日英対応） */}
         <select
           value={selectedSet}
           onChange={(e) => setSelectedSet(e.target.value)}
-          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm"
+          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm max-w-[200px]"
+          disabled={setsLoading}
         >
-          {EXPANSIONS.map((set) => (
+          {displayExpansions.map((set) => (
             <option key={set.code} value={set.code}>
-              {set.name}
+              {language === "ja" ? set.name_ja : set.name_en}
             </option>
           ))}
         </select>
         
-        {/* 言語選択 */}
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
@@ -223,10 +296,8 @@ const unifyDeckLanguage = async () => {
         </select>
       </header>
 
-      {/* メインエリア */}
       <div className="flex-1 overflow-hidden">
         <PanelGroup direction="horizontal">
-          
           <Panel defaultSize={50} minSize={30}>
             <SearchPanel 
               searchResults={searchResults} 
@@ -249,10 +320,13 @@ const unifyDeckLanguage = async () => {
               onChangeDeckName={setDeckName}
               onRemove={removeFromDeck} 
               onUnifyLanguage={unifyDeckLanguage}
+              onImportDeck={handleImportDeck}
               isProcessing={processing}
+              selectedSet={selectedSet}
+              onQuantityChange={handleQuantityChange}
+              language={language}
             />
           </Panel>
-
         </PanelGroup>
       </div>
       <Footer />
