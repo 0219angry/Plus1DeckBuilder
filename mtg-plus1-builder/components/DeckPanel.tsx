@@ -150,7 +150,7 @@ export default function DeckPanel({
 
     Object.keys(groups).forEach(key => {
       groups[key].sort((a, b) => {
-        // 【修正】cmcがundefinedの場合は0として扱う
+        // cmcがundefinedの場合は0として扱う
         const cmcA = a.cmc ?? 0;
         const cmcB = b.cmc ?? 0;
         
@@ -227,7 +227,7 @@ export default function DeckPanel({
             cols[6].push(card);
             return;
           }
-          // 【修正】cmcがundefinedの場合は0として扱う
+          // cmcがundefinedの場合は0として扱う
           const cmc = Math.floor(card.cmc ?? 0);
           
           let targetIndex = 0;
@@ -276,7 +276,8 @@ export default function DeckPanel({
       const COL_GAP = 20;
       const HEADER_HEIGHT = 80;
       const COL_HEADER_HEIGHT = 80;
-      const STACK_OFFSET = 35;
+      // 【修正】間隔を広げてバッジが隠れないようにする (35 -> 60)
+      const STACK_OFFSET = 60; 
       const SIDEBOARD_OFFSET = 60; 
       
       const getColumnHeight = (cards: DeckCard[]) => {
@@ -391,7 +392,6 @@ export default function DeckPanel({
 
               // 内訳表示 (Land列以外)
               if (colIdx < 6) {
-                   // 内訳計算時も表面のタイプを優先
                    const creatures = colCards.filter(c => {
                      const t = c.card_faces?.[0]?.type_line ?? c.type_line;
                      return t.includes("Creature");
@@ -449,28 +449,28 @@ export default function DeckPanel({
                 ctx.drawImage(img, x, cardY, CARD_WIDTH, CARD_HEIGHT);
                 ctx.shadowColor = "transparent";
                 
-                // 枚数バッジ
-                if (card.quantity > 1) {
-                  const badgeSize = 18;
-                  const badgeX = x + CARD_WIDTH - 25;
-                  const badgeY = cardY + 25;
+                // 【修正】枚数バッジ: 1枚でも表示し、マナコストと被らない位置に調整
+                // 25px(マナコストエリア) + 20px(余裕) = 45px
+                const badgeSize = 18;
+                const badgeX = x + CARD_WIDTH - 25;
+                const badgeY = cardY + 45; // マナコストの下
 
-                  ctx.beginPath();
-                  ctx.arc(badgeX, badgeY, badgeSize, 0, Math.PI * 2);
-                  ctx.fillStyle = "rgba(0,0,0,0.85)";
-                  ctx.fill();
-                  ctx.strokeStyle = "#94a3b8";
-                  ctx.lineWidth = 2;
-                  ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(badgeX, badgeY, badgeSize, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(0,0,0,0.85)";
+                ctx.fill();
+                ctx.strokeStyle = "#94a3b8";
+                ctx.lineWidth = 2;
+                ctx.stroke();
 
-                  ctx.fillStyle = "#ffffff";
-                  ctx.font = "bold 18px sans-serif";
-                  ctx.textAlign = "center";
-                  ctx.textBaseline = "middle";
-                  ctx.fillText(`x${card.quantity}`, badgeX, badgeY + 1);
-                  ctx.textAlign = "left";
-                  ctx.textBaseline = "alphabetic";
-                }
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 18px sans-serif";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(`x${card.quantity}`, badgeX, badgeY + 1);
+                ctx.textAlign = "left";
+                ctx.textBaseline = "alphabetic";
+                
                 cardY += STACK_OFFSET;
               } catch (e) {
                 console.error(e);
