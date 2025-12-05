@@ -285,6 +285,7 @@ export default function SearchPanel({ searchResults, loading, onSearch, onAdd, l
                         : t.subtypePlaceholderDefault
                     }
                     className="w-full p-1.5 rounded bg-slate-700 border border-slate-600 text-xs focus:ring-2 focus:ring-blue-500 outline-none transition-shadow disabled:opacity-50"
+                    disabled={!selectedType}
                    />
                    
                    <datalist id="subtype-list">

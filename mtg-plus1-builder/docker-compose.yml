@@ -7,6 +7,8 @@ services:
       dockerfile: Dockerfile
     ports:
       - "3000:3000"
+    env_file:
+      - local.env
     volumes:
       # ローカルのファイルをコンテナに同期（ホットリロード用）
       - ./:/app
