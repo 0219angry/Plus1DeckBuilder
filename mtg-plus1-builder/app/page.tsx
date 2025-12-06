@@ -23,6 +23,8 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
 
+  const [keyCardIds, setKeyCardIds] = useState <string[]>([]);
+
   const { allowedSets, loading: setsLoading } = useAllowedSets();
 
   const displayExpansions = useMemo(() => {
@@ -83,7 +85,6 @@ export default function Home() {
       let data = await res.json();
 
       if ((!data.data || data.data.length === 0) && language === 'ja') {
-        console.log("No results in Japanese, trying English fallback...");
         baseQuery = `(set:fdn OR set:${selectedSet}) lang:en unique:cards`;
         finalQuery = `${baseQuery} ${queryWithOptions}`;
         url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(finalQuery)}`;
@@ -146,6 +147,32 @@ export default function Home() {
   // 言語統一処理
   const unifyDeckLanguage = async () => {
     const BASIC_LANDS = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
+
+    const cleanName = (name: string | undefined) => {
+      if (!name) return name;
+      // 全角・半角括弧とその中身を削除
+      return name.replace(/[（(].*?[）)]/g, "");
+    };
+
+    const cleanCardData = (card: Card): Card => {
+      // データのコピーを作成
+      const newCard = { ...card };
+      
+      // トップレベルの printed_name をクリーニング
+      if (newCard.printed_name) {
+        newCard.printed_name = cleanName(newCard.printed_name);
+      }
+      
+      // 分割カード・出来事カードなどの各面(card_faces)もクリーニング
+      if (newCard.card_faces) {
+        newCard.card_faces = newCard.card_faces.map(face => ({
+          ...face,
+          printed_name: cleanName(face.printed_name)
+        }));
+      }
+      
+      return newCard;
+    };
     
     if ((deck.length === 0 && sideboard.length === 0) || !confirm(`デッキ内の言語を「${language === 'ja' ? '日本語' : '英語'}」に統一しますか？`)) return;
     
@@ -202,7 +229,8 @@ export default function Home() {
               const candidates = foundLands.filter(c => c.name === name);
               if (candidates.length > 0) {
                 candidates.sort((a, b) => getScore(b) - getScore(a));
-                bestCardMap.set(name, candidates[0]);
+                // ★修正: cleanCardDataを通す
+                bestCardMap.set(name, cleanCardData(candidates[0]));
               }
             });
           }
@@ -228,7 +256,8 @@ export default function Home() {
               const candidates = foundCards.filter(c => c.name === name);
               if (candidates.length > 0) {
                 candidates.sort((a, b) => getScore(b) - getScore(a));
-                bestCardMap.set(name, candidates[0]);
+                // ★修正: cleanCardDataを通す
+                bestCardMap.set(name, cleanCardData(candidates[0]));
                 foundNames.add(name);
               }
             });
@@ -256,12 +285,67 @@ export default function Home() {
                 const candidates = foundCards.filter(c => c.name === name);
                 if (candidates.length > 0) {
                   candidates.sort((a, b) => getScore(b) - getScore(a));
-                  if (!bestCardMap.has(name)) bestCardMap.set(name, candidates[0]);
+                  if (!bestCardMap.has(name)) {
+                    // ★修正: cleanCardDataを通す
+                    bestCardMap.set(name, cleanCardData(candidates[0]));
+                  }
                 }
               });
             }
           } catch (e) { console.error("Fallback search error", e); }
           await new Promise(r => setTimeout(r, 100));
+        }
+      }
+
+      // Phase 4: 疑似日本語化パッチ
+      if (language === 'ja') {
+        const englishCardEntries = Array.from(bestCardMap.entries()).filter(([_, card]) => card.lang !== 'ja');
+        
+        if (englishCardEntries.length > 0) {
+          const oracleIds = englishCardEntries.map(([_, card]) => (card as any).oracle_id).filter(Boolean);
+          
+          for (let i = 0; i < oracleIds.length; i += BATCH_SIZE) {
+             const batchIds = oracleIds.slice(i, i + BATCH_SIZE);
+             const idConditions = batchIds.map(oid => `oracle_id:${oid}`).join(" OR ");
+             const query = `(${idConditions}) lang:ja unique:prints`;
+
+             try {
+                const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                   const data = await res.json();
+                   const foundJaCards: any[] = data.data || [];
+                   
+                   englishCardEntries.forEach(([name, originalCard]) => {
+                      const jaMatch = foundJaCards.find(c => c.oracle_id === (originalCard as any).oracle_id);
+                      if (jaMatch) {
+                         // クリーニング済みのデータを生成
+                         // トップレベルの名前
+                         const cleanPrintedName = cleanName(jaMatch.printed_name || jaMatch.name);
+                         
+                         // card_faces内も日本語データで上書き＆クリーニング
+                         let cleanCardFaces = undefined;
+                         if (jaMatch.card_faces) {
+                           cleanCardFaces = jaMatch.card_faces.map((face: any) => ({
+                             ...face,
+                             printed_name: cleanName(face.printed_name)
+                           }));
+                         } else if (originalCard.card_faces) {
+                           // 日本語版にcard_facesがないが英語版にはある場合（稀）、あるいは逆の場合の整合性
+                           // 基本的には日本語版データ構造に合わせるのが安全
+                         }
+
+                         bestCardMap.set(name, {
+                            ...originalCard,
+                            printed_name: cleanPrintedName,
+                            card_faces: cleanCardFaces || originalCard.card_faces, // 日本語データがあればそちらを採用
+                         });
+                      }
+                   });
+                }
+             } catch (e) { console.error("Pseudo-Japanese patch error", e); }
+             await new Promise(r => setTimeout(r, 100));
+          }
         }
       }
 
@@ -294,6 +378,18 @@ export default function Home() {
         setDeckName("Imported Deck");
       }
     }
+  };
+
+  const handleToggleKeyCard = (cardId: string) => {
+    setKeyCardIds((prev) => {
+      if (prev.includes(cardId)) {
+        // すでに含まれていれば削除 (チェックを外す)
+        return prev.filter((id) => id !== cardId);
+      } else {
+        // 含まれていなければ追加 (チェックをつける)
+        return [...prev, cardId];
+      }
+    });
   };
 
   return (
@@ -359,6 +455,8 @@ export default function Home() {
               selectedSet={selectedSet}
               onQuantityChange={handleQuantityChange}
               language={language}
+              keyCardIds={keyCardIds}
+              onToggleKeyCard={handleToggleKeyCard}
             />
           </Panel>
         </PanelGroup>

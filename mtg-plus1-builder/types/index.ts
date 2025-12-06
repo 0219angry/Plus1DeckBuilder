@@ -28,6 +28,7 @@ export type Card = {
   lang: string;
   full_art?: boolean;
   rarity: string; // 【追加】common, uncommon, rare, mythic
+  oracle_id?: string; 
 };
 
 export type DeckCard = Card & {
