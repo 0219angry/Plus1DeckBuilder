@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { DeckCard, Card } from "@/types";
-import { List as ListIcon, LayoutGrid, Check, RefreshCw, Download, ChevronDown, Upload, Image as ImageIcon, Loader2, MessageSquare } from "lucide-react";
+import { List as ListIcon, LayoutGrid, Check, RefreshCw, Download, ChevronDown, Upload, Image as ImageIcon, Loader2, MessageSquare, Trash2 } from "lucide-react";
 import CardView from "./CardView";
 import ImportModal from "./ImportModal";
 
@@ -21,6 +21,7 @@ type Props = {
   additionalLegalSets?: string[];
   keyCardIds?: string[];
   onToggleKeyCard?: (id: string) => void;
+  onResetDeck: () => void;
 };
 
 const BASIC_LAND_NAMES_EN = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
@@ -53,6 +54,7 @@ export default function DeckPanel({
   additionalLegalSets = ["fdn"],
   keyCardIds = [], 
   onToggleKeyCard,
+  onResetDeck,
 }: Props) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [activeTab, setActiveTab] = useState<"main" | "side">("main");
@@ -121,6 +123,12 @@ export default function DeckPanel({
   };
 
   const currentProcessedData = activeTab === "main" ? processCards(deck) : processCards(sideboard);
+
+  const handleReset = () => {
+    if (window.confirm("現在のデッキ内容（カード、名前、コメントなど）をすべて消去しますか？\nこの操作は取り消せません。")) {
+      onResetDeck();
+    }
+  };
 
   // --- エクスポート ---
   const handleExport = (format: "arena" | "mo" | "jp") => {
@@ -377,12 +385,21 @@ export default function DeckPanel({
           </div>
         )}
 
+
         <div className="flex justify-between items-center">
           <div className="flex bg-slate-800 rounded p-1 border border-slate-700">
             <button onClick={() => setActiveTab("main")} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === "main" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>Main ({mainCount})</button>
             <button onClick={() => setActiveTab("side")} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === "side" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"}`}>Side ({sideCount})</button>
           </div>
           <div className="flex items-center gap-2">
+            {/* ★追加: リセットボタン (言語統一ボタンの左などに配置) */}
+            <button 
+              onClick={handleReset}
+              className="p-1.5 bg-slate-800 hover:bg-red-900/50 hover:text-red-400 border border-slate-700 hover:border-red-800 rounded text-slate-400 transition-colors"
+              title="デッキ内容をリセット（全消去）"
+            >
+              <Trash2 size={14} />
+            </button>
             <button onClick={onUnifyLanguage} disabled={isProcessing} className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 transition-colors" title="全カードの言語を統一"><RefreshCw size={14} className={isProcessing ? "animate-spin" : ""} /></button>
             <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors border border-slate-600" title="テキストからデッキをインポート"><Upload size={14} /><span>Import</span></button>
             <div className="relative">

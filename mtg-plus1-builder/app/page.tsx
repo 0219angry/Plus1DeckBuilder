@@ -16,7 +16,7 @@ export default function Home() {
   
   // デッキ情報
   const [deckName, setDeckName] = useState("Untitled Deck");
-  const [deckComment, setDeckComment] = useState(""); // 【追加】デッキコメント
+  const [deckComment, setDeckComment] = useState(""); 
   const [deck, setDeck] = useState<DeckCard[]>([]);
   const [sideboard, setSideboard] = useState<DeckCard[]>([]);
   
@@ -37,7 +37,17 @@ export default function Home() {
     return displayExpansions.map(ex => ex.code);
   }, [displayExpansions]);
 
-  // LocalStorage読み込み
+  // ★追加: セットコード -> セット名のマップを作成
+  const expansionNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    displayExpansions.forEach(ex => {
+      // 言語設定に応じて日本語名か英語名を採用
+      map[ex.code] = language === "ja" ? ex.name_ja : ex.name_en;
+    });
+    return map;
+  }, [displayExpansions, language]);
+
+  // LocalStorage読み込み (変更なし)
   useEffect(() => {
     const savedData = localStorage.getItem("mtg-plus1-deck");
     if (savedData) {
@@ -47,7 +57,7 @@ export default function Home() {
           setDeck(parsed.cards || []);
           setSideboard(parsed.sideboard || []);
           setDeckName(parsed.name || "Untitled Deck");
-          setDeckComment(parsed.comment || ""); // 【追加】コメント読み込み
+          setDeckComment(parsed.comment || ""); 
           if (parsed.selectedSet) setSelectedSet(parsed.selectedSet);
           if (parsed.language) setLanguage(parsed.language);
         } else if (Array.isArray(parsed)) {
@@ -57,12 +67,12 @@ export default function Home() {
     }
   }, []);
 
-  // LocalStorage保存
+  // LocalStorage保存 (変更なし)
   useEffect(() => {
     if (deck.length > 0 || deckName !== "Untitled Deck") {
       const dataToSave = {
         name: deckName,
-        comment: deckComment, // 【追加】コメント保存
+        comment: deckComment,
         cards: deck,
         sideboard: sideboard,
         selectedSet: selectedSet,
@@ -73,7 +83,40 @@ export default function Home() {
     }
   }, [deck, sideboard, deckName, deckComment, selectedSet, language]);
 
-  const executeSearch = async (queryWithOptions: string) => {
+  const formatCardData = (card: Card): Card => {
+    const newCard = { ...card };
+
+    // フリガナ削除ヘルパー
+    const clean = (str?: string) => str?.replace(/[（(].*?[）)]/g, "") || "";
+
+    // 1. 各面 (card_faces) のクリーニング
+    if (newCard.card_faces) {
+      newCard.card_faces = newCard.card_faces.map(face => ({
+        ...face,
+        printed_name: clean(face.printed_name)
+      }));
+    }
+
+    // 2. トップレベルの名前 (printed_name) の解決
+    if (newCard.printed_name) {
+      // 既に日本語名があれば、フリガナだけ消す
+      newCard.printed_name = clean(newCard.printed_name);
+    } else if (newCard.card_faces && newCard.lang === "ja") {
+      // ★ここが重要: 日本語版なのにトップレベル名がない場合（両面カードなど）
+      // 各面の日本語名を " // " で結合して生成する
+      const joinedName = newCard.card_faces
+        .map(f => f.printed_name || f.name) // さっきクリーニングした名前を使う
+        .join(" // ");
+      
+      if (joinedName && joinedName !== " // ") {
+        newCard.printed_name = joinedName;
+      }
+    }
+
+    return newCard;
+  };
+
+const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
     setLoading(true);
     try {
@@ -85,6 +128,7 @@ export default function Home() {
       let data = await res.json();
 
       if ((!data.data || data.data.length === 0) && language === 'ja') {
+        // 日本語で見つからない場合、英語で再検索
         baseQuery = `(set:fdn OR set:${selectedSet}) lang:en unique:cards`;
         finalQuery = `${baseQuery} ${queryWithOptions}`;
         url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(finalQuery)}`;
@@ -92,7 +136,12 @@ export default function Home() {
         data = await res.json();
       }
 
-      setSearchResults(data.data || []);
+      const rawResults: Card[] = data.data || [];
+      
+      // ★ここで整形処理を通す
+      const formattedResults = rawResults.map(formatCardData);
+
+      setSearchResults(formattedResults);
     } catch (error) {
       console.error(error);
       setSearchResults([]);
@@ -108,7 +157,7 @@ export default function Home() {
       if (idx >= 0) {
         const newDeck = [...prev];
         if (newDeck[idx].type_line.includes("Basic Land") || newDeck[idx].quantity < 4) {
-             newDeck[idx] = { ...newDeck[idx], quantity: newDeck[idx].quantity + 1 };
+              newDeck[idx] = { ...newDeck[idx], quantity: newDeck[idx].quantity + 1 };
         }
         return newDeck;
       }
@@ -144,7 +193,7 @@ export default function Home() {
     }
   };
 
-  // 言語統一処理
+// 言語統一処理 (両面カード対応版)
   const unifyDeckLanguage = async () => {
     const BASIC_LANDS = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
 
@@ -155,22 +204,18 @@ export default function Home() {
     };
 
     const cleanCardData = (card: Card): Card => {
-      // データのコピーを作成
       const newCard = { ...card };
-      
-      // トップレベルの printed_name をクリーニング
+      // トップレベルのクリーニング
       if (newCard.printed_name) {
         newCard.printed_name = cleanName(newCard.printed_name);
       }
-      
-      // 分割カード・出来事カードなどの各面(card_faces)もクリーニング
+      // 各面のクリーニング
       if (newCard.card_faces) {
         newCard.card_faces = newCard.card_faces.map(face => ({
           ...face,
           printed_name: cleanName(face.printed_name)
         }));
       }
-      
       return newCard;
     };
     
@@ -185,7 +230,6 @@ export default function Home() {
 
       const BATCH_SIZE = 20;
 
-      // 1. 基本土地とそれ以外を分ける
       const basicLandNames = uniqueNames.filter(name => BASIC_LANDS.includes(name));
       const otherNames = uniqueNames.filter(name => !BASIC_LANDS.includes(name));
 
@@ -229,7 +273,6 @@ export default function Home() {
               const candidates = foundLands.filter(c => c.name === name);
               if (candidates.length > 0) {
                 candidates.sort((a, b) => getScore(b) - getScore(a));
-                // ★修正: cleanCardDataを通す
                 bestCardMap.set(name, cleanCardData(candidates[0]));
               }
             });
@@ -256,7 +299,6 @@ export default function Home() {
               const candidates = foundCards.filter(c => c.name === name);
               if (candidates.length > 0) {
                 candidates.sort((a, b) => getScore(b) - getScore(a));
-                // ★修正: cleanCardDataを通す
                 bestCardMap.set(name, cleanCardData(candidates[0]));
                 foundNames.add(name);
               }
@@ -286,7 +328,6 @@ export default function Home() {
                 if (candidates.length > 0) {
                   candidates.sort((a, b) => getScore(b) - getScore(a));
                   if (!bestCardMap.has(name)) {
-                    // ★修正: cleanCardDataを通す
                     bestCardMap.set(name, cleanCardData(candidates[0]));
                   }
                 }
@@ -297,18 +338,15 @@ export default function Home() {
         }
       }
 
-      // Phase 4: 疑似日本語化パッチ
+      // Phase 4: 疑似日本語化パッチ（修正版）
       if (language === 'ja') {
         const englishCardEntries = Array.from(bestCardMap.entries()).filter(([_, card]) => card.lang !== 'ja');
-        
         if (englishCardEntries.length > 0) {
           const oracleIds = englishCardEntries.map(([_, card]) => (card as any).oracle_id).filter(Boolean);
-          
           for (let i = 0; i < oracleIds.length; i += BATCH_SIZE) {
              const batchIds = oracleIds.slice(i, i + BATCH_SIZE);
              const idConditions = batchIds.map(oid => `oracle_id:${oid}`).join(" OR ");
              const query = `(${idConditions}) lang:ja unique:prints`;
-
              try {
                 const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`;
                 const res = await fetch(url);
@@ -319,26 +357,14 @@ export default function Home() {
                    englishCardEntries.forEach(([name, originalCard]) => {
                       const jaMatch = foundJaCards.find(c => c.oracle_id === (originalCard as any).oracle_id);
                       if (jaMatch) {
-                         // クリーニング済みのデータを生成
-                         // トップレベルの名前
-                         const cleanPrintedName = cleanName(jaMatch.printed_name || jaMatch.name);
-                         
-                         // card_faces内も日本語データで上書き＆クリーニング
-                         let cleanCardFaces = undefined;
-                         if (jaMatch.card_faces) {
-                           cleanCardFaces = jaMatch.card_faces.map((face: any) => ({
-                             ...face,
-                             printed_name: cleanName(face.printed_name)
-                           }));
-                         } else if (originalCard.card_faces) {
-                           // 日本語版にcard_facesがないが英語版にはある場合（稀）、あるいは逆の場合の整合性
-                           // 基本的には日本語版データ構造に合わせるのが安全
-                         }
+                         // 日本語版データを整形（ここで名前結合が行われる）
+                         const formattedJa = formatCardData(jaMatch);
 
+                         // 英語版のベースに、日本語版の名前情報を注入
                          bestCardMap.set(name, {
                             ...originalCard,
-                            printed_name: cleanPrintedName,
-                            card_faces: cleanCardFaces || originalCard.card_faces, // 日本語データがあればそちらを採用
+                            printed_name: formattedJa.printed_name, // "パラメキア皇帝 // 地獄の..." が入る
+                            card_faces: formattedJa.card_faces // 各面の日本語名も入る
                          });
                       }
                    });
@@ -383,13 +409,19 @@ export default function Home() {
   const handleToggleKeyCard = (cardId: string) => {
     setKeyCardIds((prev) => {
       if (prev.includes(cardId)) {
-        // すでに含まれていれば削除 (チェックを外す)
         return prev.filter((id) => id !== cardId);
       } else {
-        // 含まれていなければ追加 (チェックをつける)
         return [...prev, cardId];
       }
     });
+  };
+
+  const handleResetDeck = () => {
+    setDeck([]);
+    setSideboard([]);
+    setDeckName("");
+    setDeckComment("");
+    setKeyCardIds([]); 
   };
 
   return (
@@ -414,7 +446,7 @@ export default function Home() {
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-20"
+          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-40"
         >
           {LANGUAGES.map((lang) => (
             <option key={lang.code} value={lang.code}>
@@ -433,6 +465,9 @@ export default function Home() {
               onSearch={executeSearch}
               onAdd={addToDeck}
               language={language}
+              expansionSetCode={selectedSet}
+              // ★追加: 正しいセット名を渡す
+              expansionSetName={expansionNameMap[selectedSet]}
             />
           </Panel>
 
@@ -446,8 +481,8 @@ export default function Home() {
               sideboard={sideboard}
               deckName={deckName}
               onChangeDeckName={setDeckName}
-              deckComment={deckComment} // 【追加】
-              onChangeDeckComment={setDeckComment} // 【追加】
+              deckComment={deckComment} 
+              onChangeDeckComment={setDeckComment} 
               onRemove={removeFromDeck} 
               onUnifyLanguage={unifyDeckLanguage}
               onImportDeck={handleImportDeck}
@@ -457,6 +492,7 @@ export default function Home() {
               language={language}
               keyCardIds={keyCardIds}
               onToggleKeyCard={handleToggleKeyCard}
+              onResetDeck={handleResetDeck}
             />
           </Panel>
         </PanelGroup>
