@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Card, DeckCard } from "@/types";
-import { PlusCircle, MinusCircle, AlertTriangle, Plus, Minus } from "lucide-react";
+import { PlusCircle, MinusCircle, AlertTriangle, Plus, Minus, Star } from "lucide-react";
 import ManaCost from "./ManaCost";
 
 type Props<T extends Card> = {
@@ -12,6 +12,8 @@ type Props<T extends Card> = {
   actionType: "add" | "remove";
   isDeckArea?: boolean;
   validationErrors?: Record<string, string>;
+  keyCardIds?: string[];
+  onToggleKeyCard?: (id: string) => void;
 };
 
 // --- カード画像プレビュー用ポータル ---
@@ -89,6 +91,8 @@ export default function CardView<T extends Card>({
   actionType,
   isDeckArea = false,
   validationErrors = {},
+  keyCardIds = [],    // デフォルト値
+  onToggleKeyCard,
 }: Props<T>) {
 
   const getImageUrl = (card: Card) => {
@@ -180,6 +184,7 @@ export default function CardView<T extends Card>({
           const imageUrl = getImageUrl(card);
           const manaCost = getManaCost(card);
           const displayName = getCardName(card);
+          const isKeyCard = keyCardIds.includes(card.id);
           const error = validationErrors[card.id];
 
           return (
@@ -203,11 +208,22 @@ export default function CardView<T extends Card>({
                 </div>
               )}
               
-              {manaCost && (
-                <div className="absolute top-1 left-1 bg-black/60 rounded px-1 py-0.5 backdrop-blur-sm shadow-sm">
-                  <ManaCost manaCost={manaCost} size="sm" />
-                </div>
-              )}
+              {isDeckArea && onToggleKeyCard && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleKeyCard(card.id);
+                    }}
+                    className={`absolute top-1 left-1 p-1.5 rounded-full shadow-lg backdrop-blur-sm transition-all z-10 ${
+                      isKeyCard 
+                        ? "bg-yellow-500/20 text-yellow-400 opacity-100" 
+                        : "bg-slate-900/40 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-900/80 hover:text-white"
+                    }`}
+                    title="キーカードに設定"
+                  >
+                    <Star size={16} fill={isKeyCard ? "currentColor" : "none"} />
+                  </button>
+                )}
 
               {/* グリッド用エラー表示 */}
               {error && (
@@ -285,6 +301,7 @@ export default function CardView<T extends Card>({
           const quantity = "quantity" in card ? (card as DeckCard).quantity : 0;
           const manaCost = getManaCost(card);
           const imageUrl = getImageUrl(card);
+          const isKeyCard = keyCardIds.includes(card.id);
           const displayName = getCardName(card);
           const error = validationErrors[card.id];
 
@@ -302,6 +319,19 @@ export default function CardView<T extends Card>({
                 }
               `}
             >
+              {isDeckArea && onToggleKeyCard && (
+                <button
+                  onClick={() => onToggleKeyCard(card.id)}
+                  className={`p-1 rounded transition-colors ${
+                    isKeyCard 
+                      ? "text-yellow-400 hover:text-yellow-300" 
+                      : "text-slate-600 hover:text-slate-400"
+                  }`}
+                  title="キーカードに設定"
+                >
+                  <Star size={16} fill={isKeyCard ? "currentColor" : "none"} />
+                </button>
+              )}
               <div className="flex items-center gap-3 overflow-hidden flex-1">
                 {isDeckArea && quantity > 0 && (
                   <span className="font-bold text-blue-300 w-6 shrink-0 text-right">

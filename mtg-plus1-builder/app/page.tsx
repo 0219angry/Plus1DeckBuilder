@@ -14,30 +14,40 @@ export default function Home() {
   
   const [searchResults, setSearchResults] = useState<Card[]>([]);
   
-  // デッキ名ステート
+  // デッキ情報
   const [deckName, setDeckName] = useState("Untitled Deck");
+  const [deckComment, setDeckComment] = useState(""); 
   const [deck, setDeck] = useState<DeckCard[]>([]);
   const [sideboard, setSideboard] = useState<DeckCard[]>([]);
   
   const [loading, setLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
 
-  // Firestoreから許可セットを取得
+  const [keyCardIds, setKeyCardIds] = useState <string[]>([]);
+
   const { allowedSets, loading: setsLoading } = useAllowedSets();
 
-  // 表示用エキスパンションリストの生成
   const displayExpansions = useMemo(() => {
     if (setsLoading) return EXPANSIONS;
     if (allowedSets.length === 0) return EXPANSIONS;
     return allowedSets;
   }, [allowedSets, setsLoading]);
 
-  // DeckPanelに渡すためのコード配列を作成
   const legalSetCodes = useMemo(() => {
     return displayExpansions.map(ex => ex.code);
   }, [displayExpansions]);
 
-  // LocalStorage読み込み
+  // ★追加: セットコード -> セット名のマップを作成
+  const expansionNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    displayExpansions.forEach(ex => {
+      // 言語設定に応じて日本語名か英語名を採用
+      map[ex.code] = language === "ja" ? ex.name_ja : ex.name_en;
+    });
+    return map;
+  }, [displayExpansions, language]);
+
+  // LocalStorage読み込み (変更なし)
   useEffect(() => {
     const savedData = localStorage.getItem("mtg-plus1-deck");
     if (savedData) {
@@ -47,6 +57,7 @@ export default function Home() {
           setDeck(parsed.cards || []);
           setSideboard(parsed.sideboard || []);
           setDeckName(parsed.name || "Untitled Deck");
+          setDeckComment(parsed.comment || ""); 
           if (parsed.selectedSet) setSelectedSet(parsed.selectedSet);
           if (parsed.language) setLanguage(parsed.language);
         } else if (Array.isArray(parsed)) {
@@ -56,11 +67,12 @@ export default function Home() {
     }
   }, []);
 
-  // LocalStorage保存
+  // LocalStorage保存 (変更なし)
   useEffect(() => {
     if (deck.length > 0 || deckName !== "Untitled Deck") {
       const dataToSave = {
         name: deckName,
+        comment: deckComment,
         cards: deck,
         sideboard: sideboard,
         selectedSet: selectedSet,
@@ -69,20 +81,67 @@ export default function Home() {
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, sideboard, deckName, selectedSet, language]);
+  }, [deck, sideboard, deckName, deckComment, selectedSet, language]);
 
-  // 検索処理
-  const executeSearch = async (queryWithOptions: string) => {
+  const formatCardData = (card: Card): Card => {
+    const newCard = { ...card };
+
+    // フリガナ削除ヘルパー
+    const clean = (str?: string) => str?.replace(/[（(].*?[）)]/g, "") || "";
+
+    // 1. 各面 (card_faces) のクリーニング
+    if (newCard.card_faces) {
+      newCard.card_faces = newCard.card_faces.map(face => ({
+        ...face,
+        printed_name: clean(face.printed_name)
+      }));
+    }
+
+    // 2. トップレベルの名前 (printed_name) の解決
+    if (newCard.printed_name) {
+      // 既に日本語名があれば、フリガナだけ消す
+      newCard.printed_name = clean(newCard.printed_name);
+    } else if (newCard.card_faces && newCard.lang === "ja") {
+      // ★ここが重要: 日本語版なのにトップレベル名がない場合（両面カードなど）
+      // 各面の日本語名を " // " で結合して生成する
+      const joinedName = newCard.card_faces
+        .map(f => f.printed_name || f.name) // さっきクリーニングした名前を使う
+        .join(" // ");
+      
+      if (joinedName && joinedName !== " // ") {
+        newCard.printed_name = joinedName;
+      }
+    }
+
+    return newCard;
+  };
+
+const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
     setLoading(true);
     try {
-      const baseQuery = `(set:fdn OR set:${selectedSet}) lang:${language} unique:cards`;
-      const finalQuery = `${baseQuery} ${queryWithOptions}`;
+      let baseQuery = `(set:fdn OR set:${selectedSet}) lang:${language} unique:cards`;
+      let finalQuery = `${baseQuery} ${queryWithOptions}`;
       
-      const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(finalQuery)}`;
-      const res = await fetch(url);
-      const data = await res.json();
-      setSearchResults(data.data || []);
+      let url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(finalQuery)}`;
+      let res = await fetch(url);
+      let data = await res.json();
+
+      if ((!data.data || data.data.length === 0) && language === 'ja') {
+        // 日本語で見つからない場合、英語で再検索
+        baseQuery = `(set:fdn OR set:${selectedSet}) lang:en unique:cards`;
+        finalQuery = `${baseQuery} ${queryWithOptions}`;
+        url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(finalQuery)}`;
+        res = await fetch(url);
+        data = await res.json();
+      }
+
+      const rawResults: Card[] = data.data || [];
+      
+      // ★ここで整形処理を通す
+      const formattedResults = rawResults.map(formatCardData);
+
+      setSearchResults(formattedResults);
     } catch (error) {
       console.error(error);
       setSearchResults([]);
@@ -91,7 +150,6 @@ export default function Home() {
     }
   };
 
-  // デッキ操作
   const addToDeck = (card: Card, target: "main" | "side" = "main") => {
     const setTargetDeck = target === "main" ? setDeck : setSideboard;
     setTargetDeck((prev) => {
@@ -99,7 +157,7 @@ export default function Home() {
       if (idx >= 0) {
         const newDeck = [...prev];
         if (newDeck[idx].type_line.includes("Basic Land") || newDeck[idx].quantity < 4) {
-             newDeck[idx] = { ...newDeck[idx], quantity: newDeck[idx].quantity + 1 };
+              newDeck[idx] = { ...newDeck[idx], quantity: newDeck[idx].quantity + 1 };
         }
         return newDeck;
       }
@@ -135,107 +193,192 @@ export default function Home() {
     }
   };
 
+// 言語統一処理 (両面カード対応版)
   const unifyDeckLanguage = async () => {
     const BASIC_LANDS = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
+
+    const cleanName = (name: string | undefined) => {
+      if (!name) return name;
+      // 全角・半角括弧とその中身を削除
+      return name.replace(/[（(].*?[）)]/g, "");
+    };
+
+    const cleanCardData = (card: Card): Card => {
+      const newCard = { ...card };
+      // トップレベルのクリーニング
+      if (newCard.printed_name) {
+        newCard.printed_name = cleanName(newCard.printed_name);
+      }
+      // 各面のクリーニング
+      if (newCard.card_faces) {
+        newCard.card_faces = newCard.card_faces.map(face => ({
+          ...face,
+          printed_name: cleanName(face.printed_name)
+        }));
+      }
+      return newCard;
+    };
     
-    if ((deck.length === 0 && sideboard.length === 0) || !confirm("デッキ内の言語を統一しますか？\n（基本土地は選択したセットに、範囲外のカードは適正なセットに自動変換されます）")) return;
+    if ((deck.length === 0 && sideboard.length === 0) || !confirm(`デッキ内の言語を「${language === 'ja' ? '日本語' : '英語'}」に統一しますか？`)) return;
     
     setProcessing(true);
 
     try {
       const allCards = [...deck, ...sideboard];
-      const validCardKeys = new Set<string>();
-      const nameSearchKeys = new Set<string>();
+      const uniqueNames = Array.from(new Set(allCards.map(c => c.name)));
+      const bestCardMap = new Map<string, Card>();
 
-      allCards.forEach(card => {
-        const isBasic = BASIC_LANDS.includes(card.name);
-        const isSetValid = card.set.toLowerCase() === "fdn" || card.set.toLowerCase() === selectedSet.toLowerCase();
+      const BATCH_SIZE = 20;
 
-        if (isBasic) {
-          nameSearchKeys.add(card.name);
-        } else if (!isSetValid) {
-          nameSearchKeys.add(card.name);
-        } else {
-          validCardKeys.add(`${card.set.toLowerCase()}:${card.collector_number}`);
+      const basicLandNames = uniqueNames.filter(name => BASIC_LANDS.includes(name));
+      const otherNames = uniqueNames.filter(name => !BASIC_LANDS.includes(name));
+
+      // 優先度スコア計算
+      const getScore = (c: Card) => {
+        let score = 0;
+        const cSet = c.set.toLowerCase();
+
+        // 1. セット優先
+        if (cSet === selectedSet.toLowerCase()) score += 10000;
+        else if (cSet === 'fdn') score += 5000;
+        
+        // 2. 言語優先
+        if (c.lang === language) score += 1000;
+        else if (c.lang === 'en') score += 500;
+        
+        // 3. その他
+        if (cSet === 'plist' || cSet === 'mb1' || cSet.length > 3) score -= 100;
+        if (!isNaN(Number(c.collector_number))) score += 50; 
+        
+        if (BASIC_LANDS.includes(c.name) && c.full_art) {
+            score += 20;
         }
-      });
 
-      const queryParts: string[] = [];
-      validCardKeys.forEach(key => {
-        const [s, cn] = key.split(":");
-        queryParts.push(`(set:${s} cn:"${cn}" lang:${language})`);
-      });
-      nameSearchKeys.forEach(name => {
-        queryParts.push(`(name:"${name}" (set:${selectedSet} OR set:fdn) lang:${language})`);
-      });
+        return score;
+      };
 
-      if (queryParts.length === 0) {
-        setProcessing(false);
-        return;
-      }
-
-      const BATCH_SIZE = 15;
-      const fetchedCardsMap = new Map<string, Card>();
-      const fetchedNameMap = new Map<string, Card>();
-
-      for (let i = 0; i < queryParts.length; i += BATCH_SIZE) {
-        const chunk = queryParts.slice(i, i + BATCH_SIZE);
-        const query = chunk.join(" or ");
+      // Phase 1: 基本土地
+      if (basicLandNames.length > 0) {
+        const landConditions = basicLandNames.map(name => `name:"${name}"`).join(" OR ");
+        const landQuery = `(${landConditions}) (set:${selectedSet} OR set:fdn) (lang:${language} OR lang:en) unique:prints`;
+        
         try {
-          const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}&unique=prints`;
+          const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(landQuery)}`;
           const res = await fetch(url);
-          if (!res.ok) continue;
-          const data = await res.json();
-
-          if (data.data) {
-            data.data.forEach((c: Card) => {
-              if (c.lang !== language) return;
-              fetchedCardsMap.set(`${c.set.toLowerCase()}:${c.collector_number}`, c);
-              const existing = fetchedNameMap.get(c.name);
-              if (!existing) {
-                fetchedNameMap.set(c.name, c);
-              } else {
-                const currentIsSelected = existing.set.toLowerCase() === selectedSet.toLowerCase();
-                const newIsSelected = c.set.toLowerCase() === selectedSet.toLowerCase();
-                const isBasic = BASIC_LANDS.includes(c.name);
-                let shouldUpdate = false;
-
-                if (newIsSelected && !currentIsSelected) {
-                  shouldUpdate = true;
-                } else if (newIsSelected === currentIsSelected) {
-                    if (isBasic && !!c.full_art !== !!existing.full_art) {
-                        shouldUpdate = !!c.full_art;
-                    } else {
-                        const numA = parseInt(c.collector_number);
-                        const numB = parseInt(existing.collector_number);
-                        if (!isNaN(numA) && !isNaN(numB)) {
-                          if (numA < numB) shouldUpdate = true;
-                        } else {
-                          if (c.collector_number < existing.collector_number) shouldUpdate = true;
-                        }
-                    }
-                }
-                if (shouldUpdate) {
-                    fetchedNameMap.set(c.name, c);
-                }
+          if (res.ok) {
+            const data = await res.json();
+            const foundLands: Card[] = data.data || [];
+            
+            basicLandNames.forEach(name => {
+              const candidates = foundLands.filter(c => c.name === name);
+              if (candidates.length > 0) {
+                candidates.sort((a, b) => getScore(b) - getScore(a));
+                bestCardMap.set(name, cleanCardData(candidates[0]));
               }
             });
           }
-        } catch (e) { console.error("Batch error", e); }
+        } catch (e) { console.error("Land search error", e); }
+      }
+
+      // Phase 2: その他のカード（セット優先検索）
+      const foundNames = new Set<string>();
+
+      for (let i = 0; i < otherNames.length; i += BATCH_SIZE) {
+        const batchNames = otherNames.slice(i, i + BATCH_SIZE);
+        const nameConditions = batchNames.map(name => `name:"${name}"`).join(" OR ");
+        const setCondition = selectedSet === 'fdn' ? `set:fdn` : `(set:${selectedSet} OR set:fdn)`;
+        const query = `(${nameConditions}) ${setCondition} (lang:${language} OR lang:en)`;
+        
+        try {
+          const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query + " unique:prints")}`;
+          const res = await fetch(url);
+          if (res.ok) {
+            const data = await res.json();
+            const foundCards: Card[] = data.data || [];
+            batchNames.forEach(name => {
+              const candidates = foundCards.filter(c => c.name === name);
+              if (candidates.length > 0) {
+                candidates.sort((a, b) => getScore(b) - getScore(a));
+                bestCardMap.set(name, cleanCardData(candidates[0]));
+                foundNames.add(name);
+              }
+            });
+          }
+        } catch (e) { console.error("Priority search error", e); }
         await new Promise(r => setTimeout(r, 100));
+      }
+
+      // Phase 3: フォールバック検索
+      const missingNames = otherNames.filter(name => !foundNames.has(name));
+      
+      if (missingNames.length > 0) {
+        for (let i = 0; i < missingNames.length; i += BATCH_SIZE) {
+          const batchNames = missingNames.slice(i, i + BATCH_SIZE);
+          const nameConditions = batchNames.map(name => `name:"${name}"`).join(" OR ");
+          const query = `(${nameConditions}) (lang:${language} OR lang:en) unique:prints`;
+          
+          try {
+            const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`;
+            const res = await fetch(url);
+            if (res.ok) {
+              const data = await res.json();
+              const foundCards: Card[] = data.data || [];
+              batchNames.forEach(name => {
+                const candidates = foundCards.filter(c => c.name === name);
+                if (candidates.length > 0) {
+                  candidates.sort((a, b) => getScore(b) - getScore(a));
+                  if (!bestCardMap.has(name)) {
+                    bestCardMap.set(name, cleanCardData(candidates[0]));
+                  }
+                }
+              });
+            }
+          } catch (e) { console.error("Fallback search error", e); }
+          await new Promise(r => setTimeout(r, 100));
+        }
+      }
+
+      // Phase 4: 疑似日本語化パッチ（修正版）
+      if (language === 'ja') {
+        const englishCardEntries = Array.from(bestCardMap.entries()).filter(([_, card]) => card.lang !== 'ja');
+        if (englishCardEntries.length > 0) {
+          const oracleIds = englishCardEntries.map(([_, card]) => (card as any).oracle_id).filter(Boolean);
+          for (let i = 0; i < oracleIds.length; i += BATCH_SIZE) {
+             const batchIds = oracleIds.slice(i, i + BATCH_SIZE);
+             const idConditions = batchIds.map(oid => `oracle_id:${oid}`).join(" OR ");
+             const query = `(${idConditions}) lang:ja unique:prints`;
+             try {
+                const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`;
+                const res = await fetch(url);
+                if (res.ok) {
+                   const data = await res.json();
+                   const foundJaCards: any[] = data.data || [];
+                   
+                   englishCardEntries.forEach(([name, originalCard]) => {
+                      const jaMatch = foundJaCards.find(c => c.oracle_id === (originalCard as any).oracle_id);
+                      if (jaMatch) {
+                         // 日本語版データを整形（ここで名前結合が行われる）
+                         const formattedJa = formatCardData(jaMatch);
+
+                         // 英語版のベースに、日本語版の名前情報を注入
+                         bestCardMap.set(name, {
+                            ...originalCard,
+                            printed_name: formattedJa.printed_name, // "パラメキア皇帝 // 地獄の..." が入る
+                            card_faces: formattedJa.card_faces // 各面の日本語名も入る
+                         });
+                      }
+                   });
+                }
+             } catch (e) { console.error("Pseudo-Japanese patch error", e); }
+             await new Promise(r => setTimeout(r, 100));
+          }
+        }
       }
 
       const updateList = (list: DeckCard[]) => {
         return list.map(card => {
-          const isBasic = BASIC_LANDS.includes(card.name);
-          const isSetValid = card.set.toLowerCase() === "fdn" || card.set.toLowerCase() === selectedSet.toLowerCase();
-          if (isBasic || !isSetValid) {
-            const newCard = fetchedNameMap.get(card.name);
-            if (newCard) return { ...newCard, quantity: card.quantity };
-          }
-          const key = `${card.set.toLowerCase()}:${card.collector_number}`;
-          const newCardById = fetchedCardsMap.get(key);
-          if (newCardById) return { ...newCardById, quantity: card.quantity };
+          const bestVersion = bestCardMap.get(card.name);
+          if (bestVersion) return { ...bestVersion, quantity: card.quantity };
           return card;
         });
       };
@@ -263,13 +406,30 @@ export default function Home() {
     }
   };
 
+  const handleToggleKeyCard = (cardId: string) => {
+    setKeyCardIds((prev) => {
+      if (prev.includes(cardId)) {
+        return prev.filter((id) => id !== cardId);
+      } else {
+        return [...prev, cardId];
+      }
+    });
+  };
+
+  const handleResetDeck = () => {
+    setDeck([]);
+    setSideboard([]);
+    setDeckName("");
+    setDeckComment("");
+    setKeyCardIds([]); 
+  };
+
   return (
     <main className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden">
       
       <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0">
         <h1 className="text-lg font-bold mr-2 text-blue-400">MtG PLUS1</h1>
         
-        {/* セット選択（Firestore連動 + 日英対応） */}
         <select
           value={selectedSet}
           onChange={(e) => setSelectedSet(e.target.value)}
@@ -286,7 +446,7 @@ export default function Home() {
         <select
           value={language}
           onChange={(e) => setLanguage(e.target.value)}
-          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-20"
+          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-40"
         >
           {LANGUAGES.map((lang) => (
             <option key={lang.code} value={lang.code}>
@@ -305,6 +465,9 @@ export default function Home() {
               onSearch={executeSearch}
               onAdd={addToDeck}
               language={language}
+              expansionSetCode={selectedSet}
+              // ★追加: 正しいセット名を渡す
+              expansionSetName={expansionNameMap[selectedSet]}
             />
           </Panel>
 
@@ -318,6 +481,8 @@ export default function Home() {
               sideboard={sideboard}
               deckName={deckName}
               onChangeDeckName={setDeckName}
+              deckComment={deckComment} 
+              onChangeDeckComment={setDeckComment} 
               onRemove={removeFromDeck} 
               onUnifyLanguage={unifyDeckLanguage}
               onImportDeck={handleImportDeck}
@@ -325,6 +490,9 @@ export default function Home() {
               selectedSet={selectedSet}
               onQuantityChange={handleQuantityChange}
               language={language}
+              keyCardIds={keyCardIds}
+              onToggleKeyCard={handleToggleKeyCard}
+              onResetDeck={handleResetDeck}
             />
           </Panel>
         </PanelGroup>

@@ -9,7 +9,7 @@ export type Card = {
     small: string;
     large: string;
     png: string;
-    art_crop: string;
+    art_crop: string; // 背景用に追加
     border_crop: string;
   };
   card_faces?: {
@@ -17,6 +17,7 @@ export type Card = {
     printed_name?: string;
     image_uris?: {
       normal: string;
+      art_crop?: string; // 両面カードの背景用
     };
     mana_cost?: string;
     type_line?: string;
@@ -25,7 +26,9 @@ export type Card = {
   cmc?: number;
   type_line: string;
   lang: string;
-  full_art?: boolean; 
+  full_art?: boolean;
+  rarity: string; // 【追加】common, uncommon, rare, mythic
+  oracle_id?: string; 
 };
 
 export type DeckCard = Card & {
