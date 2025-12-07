@@ -10,7 +10,8 @@ import {
 import { 
   getAuth,
   signInAnonymously,
-  signInWithCustomToken
+  signInWithCustomToken,
+  onAuthStateChanged
 } from "firebase/auth";
 
 export type BannedCardItem = {
@@ -20,24 +21,16 @@ export type BannedCardItem = {
 
 export type BannedCardsMap = Record<string, BannedCardItem[]>;
 
-// --- 設定値の読み込み ---
+// --- 設定値読み込み ---
 const getFirebaseConfig = () => {
   if (typeof window !== 'undefined' && (window as any).__firebase_config) {
-    try {
-      return JSON.parse((window as any).__firebase_config);
-    } catch (e) {
-      console.error("Failed to parse __firebase_config", e);
-    }
+    try { return JSON.parse((window as any).__firebase_config); } catch (e) { console.error(e); }
   }
-  return process.env.NEXT_PUBLIC_FIREBASE_CONFIG 
-    ? JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG) 
-    : {};
+  return process.env.NEXT_PUBLIC_FIREBASE_CONFIG ? JSON.parse(process.env.NEXT_PUBLIC_FIREBASE_CONFIG) : {};
 };
 
 const getAppId = () => {
-  if (typeof window !== 'undefined' && (window as any).__app_id) {
-    return (window as any).__app_id;
-  }
+  if (typeof window !== 'undefined' && (window as any).__app_id) { return (window as any).__app_id; }
   return process.env.NEXT_PUBLIC_APP_ID || 'default-app-id';
 };
 
@@ -63,75 +56,88 @@ if (typeof window !== "undefined" && Object.keys(firebaseConfig).length > 0) {
   }
 }
 
+// --- キャッシュキー ---
+const CACHE_KEY = "mtg-plus1-banned-cards-cache";
+
 export function useBannedCards() {
   const [bannedMap, setBannedMap] = useState<BannedCardsMap>({});
   const [loading, setLoading] = useState(true);
 
+  // Firestoreパス
   const getDocRef = () => {
     if (!db) return null;
-    // useAllowedSets と同じ階層構造を使用
     return doc(db, 'artifacts', appId, 'public', 'data', 'config_banned', 'list');
   };
 
   useEffect(() => {
-    // そもそもFirebaseが初期化できていない場合
+    // 1. まずローカルキャッシュがあれば即表示（Loading時間をゼロにする）
+    const cached = localStorage.getItem(CACHE_KEY);
+    if (cached) {
+      try {
+        setBannedMap(JSON.parse(cached));
+        setLoading(false); // キャッシュがあればロード完了とする
+      } catch (e) { console.error("Cache parse error", e); }
+    }
+
     if (!db || !auth) {
-      console.warn("Firebase not configured. Banned cards disabled.");
+      console.warn("Firebase not configured.");
       setLoading(false);
       return;
     }
 
-    let unsubscribe: () => void;
+    let unsubscribeSnapshot: () => void;
 
+    // 2. 認証とデータ同期を開始
     const init = async () => {
-      try {
-        // console.log("Starting Firebase Auth for Banned Cards...");
-        
-        // 認証処理
-        if ((window as any).__initial_auth_token) {
-           await signInWithCustomToken(auth, (window as any).__initial_auth_token);
-        } else {
-           await signInAnonymously(auth);
-        }
-
-        const docRef = getDocRef();
-        if (!docRef) {
-            console.error("DocRef is null");
-            setLoading(false);
-            return;
-        }
-
-        // console.log("Listening to Firestore:", docRef.path);
-
-        unsubscribe = onSnapshot(docRef, (snap) => {
-          // console.log("Snapshot received. Exists:", snap.exists());
-          if (snap.exists()) {
-            const data = snap.data();
-            setBannedMap(data as BannedCardsMap);
+      // 既にログイン済みなら再ログインをスキップ（高速化）
+      if (!auth.currentUser) {
+        try {
+          if ((window as any).__initial_auth_token) {
+             await signInWithCustomToken(auth, (window as any).__initial_auth_token);
           } else {
-            // データがない場合は初期化（空オブジェクト）して書き込む
-            console.log("No banned cards data found. Initializing...");
-            setDoc(docRef, {}, { merge: true })
-              .catch(e => console.error("Init doc write failed (Permission Denied?):", e));
-            setBannedMap({});
+             await signInAnonymously(auth);
           }
-          setLoading(false);
-        }, (error) => {
-          console.error("Firestore listen error (Permission Denied?):", error);
-          // エラー時もLoadingを解除して、空リストとして動作させる
-          setLoading(false);
-        });
-
-      } catch (e) {
-        console.error("useBannedCards Init Error:", e);
-        setLoading(false);
+        } catch (e) {
+          console.error("Auth error:", e);
+          return;
+        }
       }
+
+      const docRef = getDocRef();
+      if (!docRef) return;
+
+      // リアルタイムリスナー
+      unsubscribeSnapshot = onSnapshot(docRef, (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as BannedCardsMap;
+          setBannedMap(data);
+          // 最新データをキャッシュに保存
+          localStorage.setItem(CACHE_KEY, JSON.stringify(data));
+        } else {
+          setDoc(docRef, {}, { merge: true }).catch(e => console.error(e));
+          setBannedMap({});
+        }
+        setLoading(false);
+      }, (error) => {
+        console.error("Firestore error:", error);
+        setLoading(false);
+      });
     };
 
-    init();
+    // 認証状態の監視（SDKの初期化待ち）
+    const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // 既にユーザーがいる場合は即init（再ログイン処理をスキップできる）
+        init(); 
+      } else {
+        // 未ログインならinit内でログイン試行
+        init();
+      }
+    });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribeSnapshot) unsubscribeSnapshot();
+      if (unsubscribeAuth) unsubscribeAuth();
     };
   }, []);
 
@@ -152,10 +158,17 @@ export function useBannedCards() {
       }
 
       const newList = [...currentList, { name, reason }];
+      const newData = { ...currentMap, [setCode]: newList };
+      
+      // 先行してStateとキャッシュを更新（体感速度向上）
+      setBannedMap(newData);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(newData));
+
       await setDoc(docRef, { [setCode]: newList }, { merge: true });
     } catch (e) {
       console.error("Failed to add ban:", e);
-      alert("登録に失敗しました（権限がない可能性があります）");
+      alert("登録に失敗しました");
+      // 失敗したらロールバック（リスナーが正しいデータに戻してくれるので放置でも可）
     }
   };
 
@@ -170,6 +183,11 @@ export function useBannedCards() {
       const currentMap = snap.exists() ? (snap.data() as BannedCardsMap) : {};
       const currentList = currentMap[setCode] || [];
       const newList = currentList.filter(c => c.name !== name);
+      const newData = { ...currentMap, [setCode]: newList };
+
+      // 先行更新
+      setBannedMap(newData);
+      localStorage.setItem(CACHE_KEY, JSON.stringify(newData));
 
       await setDoc(docRef, { [setCode]: newList }, { merge: true });
     } catch (e) {

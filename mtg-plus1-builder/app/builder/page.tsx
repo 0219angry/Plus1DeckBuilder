@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import Link from "next/link";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Card, DeckCard, EXPANSIONS, LANGUAGES, Expansion } from "@/types";
 import SearchPanel from "@/components/SearchPanel";
@@ -483,6 +484,10 @@ useEffect(() => {
             </option>
           ))}
         </select>
+
+        <Link href="/banned-cards" className="hover:text-red-400 transition-colors">
+          禁止カード一覧
+        </Link>
       </header>
 
       <div className="flex-1 overflow-hidden">
