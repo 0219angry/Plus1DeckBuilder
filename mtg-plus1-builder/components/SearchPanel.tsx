@@ -9,6 +9,8 @@ type Props = {
   onSearch: (query: string) => void;
   onAdd: (card: Card, target: "main" | "side") => void;
   language: string;
+  expansionSetCode?: string;
+  expansionSetName?: string;
 };
 
 // --- 定数・辞書定義 ---
@@ -48,26 +50,34 @@ const UI_TEXT = {
     color: "色",
     type: "カードタイプ (単一選択)",
     subtype: "サブタイプ",
-    subtypePlaceholderDefault: "先にタイプを選択してください",
-    subtypePlaceholderPrefix: "のサブタイプを選択...",
-    manaValue: "マナ総量",
-    manaValuePlaceholder: "数値 (例: 3)",
+    subtypePlaceholderDefault: "タイプ未選択",
+    subtypePlaceholderPrefix: "のサブタイプ...",
+    manaValue: "マナ",
+    manaValuePlaceholder: "例: 3",
     rarity: "レアリティ",
     results: "結果",
     searchPlaceholder: "カード名 (日本語で検索)",
+    setLabel: "収録セット",
+    setAll: "すべて",
+    setFdn: "Foundations (FDN)",
+    setExp: "Expansion",
   },
   en: {
     reset: "Reset",
     color: "Color",
     type: "Type (Single Select)",
     subtype: "Subtype",
-    subtypePlaceholderDefault: "Select a main Type first",
-    subtypePlaceholderPrefix: "type...",
-    manaValue: "Mana Value",
-    manaValuePlaceholder: "Equals (e.g. 3)",
+    subtypePlaceholderDefault: "Select Type first",
+    subtypePlaceholderPrefix: "subtype...",
+    manaValue: "MV",
+    manaValuePlaceholder: "e.g. 3",
     rarity: "Rarity",
     results: "Results",
     searchPlaceholder: "Card Name (English)",
+    setLabel: "Set",
+    setAll: "All",
+    setFdn: "Foundations (FDN)",
+    setExp: "Expansion",
   },
 };
 
@@ -91,13 +101,20 @@ const CATALOG_MAP: Record<string, string> = {
   Sorcery: "spell-types",
 };
 
-export default function SearchPanel({ searchResults, loading, onSearch, onAdd, language }: Props) {
+export default function SearchPanel({ 
+  searchResults, 
+  loading, 
+  onSearch, 
+  onAdd, 
+  language,
+  expansionSetCode = "neo",
+  expansionSetName = "Kamigawa: Neon Dynasty" // デフォルト値
+}: Props) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
   // 現在の言語設定に基づいたテキストセットを取得
-  // languageが不正な値の場合は 'ja' にフォールバック
   const currentLang = (language === "en" ? "en" : "ja") as "ja" | "en";
   const t = UI_TEXT[currentLang];
 
@@ -106,6 +123,7 @@ export default function SearchPanel({ searchResults, loading, onSearch, onAdd, l
   const [subtype, setSubtype] = useState("");
   const [manaValue, setManaValue] = useState("");
   const [rarity, setRarity] = useState("");
+  const [setFilter, setSetFilter] = useState<"all" | "fdn" | "expansion">("all");
 
   const [targetBoard, setTargetBoard] = useState<"main" | "side">("main"); 
 
@@ -158,6 +176,16 @@ export default function SearchPanel({ searchResults, loading, onSearch, onAdd, l
     if (subtype) finalQuery += ` t:${subtype}`;
     if (manaValue) finalQuery += ` mv=${manaValue}`;
     if (rarity) finalQuery += ` r:${rarity}`;
+
+    // セットフィルターの適用
+    if (setFilter === "fdn") {
+      finalQuery += ` s:fdn`;
+    } else if (setFilter === "expansion") {
+      finalQuery += ` s:${expansionSetCode}`;
+    } else {
+      finalQuery += ` (s:fdn OR s:${expansionSetCode})`;
+    }
+
     onSearch(finalQuery.trim());
   };
 
@@ -167,6 +195,7 @@ export default function SearchPanel({ searchResults, loading, onSearch, onAdd, l
     setSubtype("");
     setManaValue("");
     setRarity("");
+    setSetFilter("all");
   };
 
   return (
@@ -200,49 +229,68 @@ export default function SearchPanel({ searchResults, loading, onSearch, onAdd, l
         </div>
 
         {showFilters && (
-          <div className="p-3 bg-slate-800 rounded border border-slate-700 space-y-4 animate-in fade-in slide-in-from-top-2 relative">
+          <div className="p-3 bg-slate-800 rounded border border-slate-700 space-y-3 animate-in fade-in slide-in-from-top-2 relative">
             
             <button 
               onClick={clearFilters}
-              className="absolute top-2 right-2 text-xs text-slate-400 hover:text-white flex items-center gap-1"
+              className="absolute top-2 right-2 text-xs text-slate-400 hover:text-white flex items-center gap-1 z-10"
             >
               <X size={12} /> {t.reset}
             </button>
 
-            {/* 色選択 */}
-            <div>
-              <label className="text-xs text-slate-400 block mb-2 font-bold">{t.color}</label>
-              <div className="flex gap-3 justify-start">
-                {MANA_BUTTONS.map((btn) => {
-                  const isSelected = selectedColors.includes(btn.value);
-                  return (
-                    <button
-                      key={btn.value}
-                      onClick={() => toggleColor(btn.value)}
-                      className={`
-                        relative w-8 h-8 rounded-full transition-all duration-200 ease-in-out
-                        ${isSelected 
-                          ? `scale-110 opacity-100 grayscale-0 shadow-lg ${btn.glow}` 
-                          : "opacity-40 grayscale hover:opacity-70 hover:grayscale-0"
-                        }
-                      `}
-                      title={`Color: ${btn.symbol}`}
-                    >
-                      <img
-                        src={`https://svgs.scryfall.io/card-symbols/${btn.symbol}.svg`}
-                        alt={btn.symbol}
-                        className="w-full h-full drop-shadow-sm"
-                      />
-                    </button>
-                  );
-                })}
+            {/* --- 1行目: 色選択 & セット選択 (コンパクト化) --- */}
+            <div className="flex flex-wrap items-end gap-x-4 gap-y-2">
+              {/* 色選択 */}
+              <div>
+                <label className="text-xs text-slate-400 block mb-1 font-bold">{t.color}</label>
+                <div className="flex gap-2">
+                  {MANA_BUTTONS.map((btn) => {
+                    const isSelected = selectedColors.includes(btn.value);
+                    return (
+                      <button
+                        key={btn.value}
+                        onClick={() => toggleColor(btn.value)}
+                        className={`
+                          relative w-7 h-7 rounded-full transition-all duration-200 ease-in-out
+                          ${isSelected 
+                            ? `scale-110 opacity-100 grayscale-0 shadow-lg ${btn.glow}` 
+                            : "opacity-40 grayscale hover:opacity-70 hover:grayscale-0"
+                          }
+                        `}
+                      >
+                        <img
+                          src={`https://svgs.scryfall.io/card-symbols/${btn.symbol}.svg`}
+                          alt={btn.symbol}
+                          className="w-full h-full drop-shadow-sm"
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* セット選択 (右側に配置してスペース有効活用) */}
+              <div className="flex-1 min-w-[180px]">
+                 <label className="text-xs text-slate-400 block mb-1 font-bold">{t.setLabel}</label>
+                 <select 
+                   value={setFilter} 
+                   onChange={(e) => setSetFilter(e.target.value as "all" | "fdn" | "expansion")}
+                   className="w-full p-1.5 h-8 rounded bg-slate-700 border border-slate-600 text-xs truncate"
+                 >
+                   <option value="all">{t.setAll}</option>
+                   <option value="fdn">{t.setFdn}</option>
+                   <option value="expansion">
+                     {/* ★修正: セット名を表示 */}
+                     {expansionSetName} ({expansionSetCode.toUpperCase()})
+                   </option>
+                 </select>
               </div>
             </div>
 
-            {/* カードタイプ選択 */}
+            {/* --- 2行目: カードタイプ (維持) --- */}
             <div>
-              <label className="text-xs text-slate-400 block mb-2 font-bold">{t.type}</label>
-              <div className="flex flex-wrap gap-1.5">
+              <label className="text-xs text-slate-400 block mb-1 font-bold">{t.type}</label>
+              <div className="flex flex-wrap gap-1">
                 {CARD_TYPES.map((type) => {
                   const isSelected = selectedType === type;
                   return (
@@ -257,7 +305,6 @@ export default function SearchPanel({ searchResults, loading, onSearch, onAdd, l
                         }
                       `}
                     >
-                      {/* 言語に応じたラベルを表示 */}
                       {TYPE_LABELS[type][currentLang]}
                     </button>
                   );
@@ -265,68 +312,57 @@ export default function SearchPanel({ searchResults, loading, onSearch, onAdd, l
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
+            {/* --- 3行目: サブタイプ / マナ総量 / レアリティ (グリッドでまとめる) --- */}
+            <div className="grid grid-cols-12 gap-3 items-end">
+              {/* サブタイプ (幅広) */}
+              <div className="col-span-6 sm:col-span-5 relative">
                  <div className="flex justify-between items-end mb-1">
                    <label className="text-xs text-slate-400 font-bold">{t.subtype}</label>
-                   {loadingSubtypes && <span className="text-xs text-blue-400 flex items-center gap-1"><Loader2 size={10} className="animate-spin"/> Loading...</span>}
+                   {loadingSubtypes && <Loader2 size={10} className="animate-spin text-blue-400"/>}
                  </div>
-                 
                  <div className="relative">
                    <input
                     type="text"
                     list="subtype-list"
                     value={subtype}
                     onChange={(e) => setSubtype(e.target.value)}
-                    // 言語と選択状態に応じたプレースホルダー
-                    placeholder={
-                      selectedType 
-                        ? `${TYPE_LABELS[selectedType][currentLang]} ${t.subtypePlaceholderPrefix}` 
-                        : t.subtypePlaceholderDefault
-                    }
-                    className="w-full p-1.5 rounded bg-slate-700 border border-slate-600 text-xs focus:ring-2 focus:ring-blue-500 outline-none transition-shadow disabled:opacity-50"
+                    placeholder={selectedType ? t.subtypePlaceholderPrefix : t.subtypePlaceholderDefault}
+                    className="w-full p-1.5 h-8 rounded bg-slate-700 border border-slate-600 text-xs focus:ring-2 focus:ring-blue-500 outline-none disabled:opacity-50"
                     disabled={!selectedType}
                    />
-                   
                    <datalist id="subtype-list">
-                     {availableSubtypes.map(s => (
-                       <option key={s} value={s} />
-                     ))}
+                     {availableSubtypes.map(s => <option key={s} value={s} />)}
                    </datalist>
-                   
                    {subtype && (
-                     <button
-                       onClick={() => setSubtype("")}
-                       className="absolute right-2 top-1.5 text-slate-400 hover:text-white"
-                     >
-                       <X size={14} />
+                     <button onClick={() => setSubtype("")} className="absolute right-2 top-2 text-slate-400 hover:text-white">
+                       <X size={12} />
                      </button>
                    )}
                  </div>
               </div>
 
-              <div>
+              {/* マナ総量 (幅狭) */}
+              <div className="col-span-3 sm:col-span-3">
                 <label className="text-xs text-slate-400 block mb-1 font-bold">{t.manaValue}</label>
                 <input
                   type="number"
                   value={manaValue}
                   onChange={(e) => setManaValue(e.target.value)}
                   placeholder={t.manaValuePlaceholder}
-                  className="w-full p-1.5 rounded bg-slate-700 border border-slate-600 text-xs"
+                  className="w-full p-1.5 h-8 rounded bg-slate-700 border border-slate-600 text-xs"
                 />
               </div>
 
-              <div>
+              {/* レアリティ (中くらい) */}
+              <div className="col-span-3 sm:col-span-4">
                  <label className="text-xs text-slate-400 block mb-1 font-bold">{t.rarity}</label>
                  <select 
                    value={rarity} 
                    onChange={(e) => setRarity(e.target.value)}
-                   className="w-full p-1.5 rounded bg-slate-700 border border-slate-600 text-xs"
+                   className="w-full p-1.5 h-8 rounded bg-slate-700 border border-slate-600 text-xs"
                  >
                    {RARITY_OPTIONS.map(opt => (
-                     <option key={opt.value} value={opt.value}>
-                       {opt.label[currentLang]}
-                     </option>
+                     <option key={opt.value} value={opt.value}>{opt.label[currentLang]}</option>
                    ))}
                  </select>
               </div>
