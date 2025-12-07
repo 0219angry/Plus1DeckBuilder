@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Card, DeckCard } from "@/types";
-import { PlusCircle, MinusCircle, AlertTriangle, Plus, Minus, Star } from "lucide-react";
+import { PlusCircle, MinusCircle, AlertTriangle, Plus, Minus, Star, Ban } from "lucide-react";
 import ManaCost from "./ManaCost";
 
 type Props<T extends Card> = {
@@ -186,6 +186,7 @@ export default function CardView<T extends Card>({
           const displayName = getCardName(card);
           const isKeyCard = keyCardIds.includes(card.id);
           const error = validationErrors[card.id];
+          const isBanned = error?.includes("BANNED");
 
           return (
             <div
@@ -227,14 +228,15 @@ export default function CardView<T extends Card>({
 
               {/* グリッド用エラー表示 */}
               {error && (
-                <div 
-                  className="absolute top-1 right-1 z-20"
-                  onMouseEnter={(e) => handleErrorMouseEnter(e, error)}
-                  onMouseLeave={handleErrorMouseLeave}
-                >
-                  <div className="bg-red-600 text-white rounded-full p-1 shadow-md animate-pulse">
-                    <AlertTriangle size={16} />
-                  </div>
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 pointer-events-none p-2 text-center">
+                  {isBanned ? (
+                    <Ban className="text-red-500 w-12 h-12 drop-shadow-md mb-1" />
+                  ) : (
+                    <AlertTriangle className="text-red-500 w-10 h-10 drop-shadow-md mb-1" />
+                  )}
+                  <span className="text-red-100 font-bold text-xs bg-red-900/80 px-2 py-1 rounded">
+                    {isBanned ? "BANNED" : "INVALID"}
+                  </span>
                 </div>
               )}
 
