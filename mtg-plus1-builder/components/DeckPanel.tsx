@@ -27,9 +27,32 @@ type Props = {
 
 // 基本土地関連
 const BASIC_LAND_NAMES_EN = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
-const ALL_BASIC_LAND_NAMES = [...BASIC_LAND_NAMES_EN, "平地", "島", "沼", "山", "森", "荒地"];
+
+// ★追加: 冠雪土地の英語名リスト
+const SNOW_BASIC_LAND_NAMES_EN = [
+  "Snow-Covered Plains", 
+  "Snow-Covered Island", 
+  "Snow-Covered Swamp", 
+  "Snow-Covered Mountain", 
+  "Snow-Covered Forest"
+];
+
+// ★修正: 冠雪土地も含めるように統合
+const ALL_BASIC_LAND_NAMES = [
+  ...BASIC_LAND_NAMES_EN,
+  ...SNOW_BASIC_LAND_NAMES_EN,
+  "平地", "島", "沼", "山", "森", "荒地",
+  "冠雪の平地", "冠雪の島", "冠雪の沼", "冠雪の山", "冠雪の森"
+];
+
 const BASIC_LAND_TRANSLATION: Record<string, string> = {
-  "Plains": "平地", "Island": "島", "Swamp": "沼", "Mountain": "山", "Forest": "森", "Wastes": "荒地"
+  "Plains": "平地", "Island": "島", "Swamp": "沼", "Mountain": "山", "Forest": "森", "Wastes": "荒地",
+  // 必要であれば冠雪土地の翻訳も追加できますが、バリデーションにはALL_BASIC_LAND_NAMESだけで十分です
+  "Snow-Covered Plains": "冠雪の平地",
+  "Snow-Covered Island": "冠雪の島",
+  "Snow-Covered Swamp": "冠雪の沼",
+  "Snow-Covered Mountain": "冠雪の山",
+  "Snow-Covered Forest": "冠雪の森"
 };
 
 const CATEGORY_PRIORITY: Record<string, number> = {

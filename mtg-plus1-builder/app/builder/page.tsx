@@ -7,8 +7,12 @@ import { Card, DeckCard, EXPANSIONS, LANGUAGES, Expansion } from "@/types";
 import SearchPanel from "@/components/SearchPanel";
 import DeckPanel from "@/components/DeckPanel";
 import Footer from "@/components/Footer";
+import AnalysisPanel from "@/components/AnalysisPanel"; 
+import SampleHandPanel from "@/components/SampleHandPanel"; 
 import { useAllowedSets } from "@/hooks/useAllowedSets";
 import { useBannedCards } from "@/hooks/useBannedCards";
+
+import { Search as SearchIcon, BarChart3, Play } from "lucide-react";
 
 export default function Home() {
   const [selectedSet, setSelectedSet] = useState("fdn");
@@ -26,6 +30,8 @@ export default function Home() {
   const [processing, setProcessing] = useState(false);
 
   const [keyCardIds, setKeyCardIds] = useState<string[]>([]);
+
+  const [activeTab, setActiveTab] = useState<"search" | "analysis" | "sample">("search");
 
   const { allowedSets, loading: setsLoading } = useAllowedSets();
 
@@ -454,54 +460,76 @@ useEffect(() => {
     setKeyCardIds([]); 
   };
 
-  return (
+return (
     <main className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden">
       
+      {/* ヘッダー (変更なし) */}
       <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0">
         <h1 className="text-lg font-bold mr-2 text-blue-400">MtG PLUS1</h1>
-        
-        <select
-          value={selectedSet}
-          onChange={(e) => setSelectedSet(e.target.value)}
-          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm max-w-[200px]"
-          disabled={setsLoading}
-        >
-          {displayExpansions.map((set) => (
-            <option key={set.code} value={set.code}>
-              {language === "ja" ? set.name_ja : set.name_en}
-            </option>
-          ))}
+        <select value={selectedSet} onChange={(e) => setSelectedSet(e.target.value)} className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm max-w-[200px]" disabled={setsLoading}>
+          {displayExpansions.map((set) => <option key={set.code} value={set.code}>{language === "ja" ? set.name_ja : set.name_en}</option>)}
         </select>
-        
-        <select
-          value={language}
-          onChange={(e) => setLanguage(e.target.value)}
-          className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-40"
-        >
-          {LANGUAGES.map((lang) => (
-            <option key={lang.code} value={lang.code}>
-              {lang.name}
-            </option>
-          ))}
+        <select value={language} onChange={(e) => setLanguage(e.target.value)} className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-40">
+          {LANGUAGES.map((lang) => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
         </select>
-
-        <Link href="/banned-cards" className="hover:text-red-400 transition-colors">
-          禁止カード一覧
-        </Link>
       </header>
 
       <div className="flex-1 overflow-hidden">
         <PanelGroup direction="horizontal">
-          <Panel defaultSize={50} minSize={30}>
-            <SearchPanel 
-              searchResults={searchResults} 
-              loading={loading} 
-              onSearch={executeSearch}
-              onAdd={addToDeck}
-              language={language}
-              expansionSetCode={selectedSet}
-              expansionSetName={expansionNameMap[selectedSet]}
-            />
+          
+          {/* 左パネル (タブ切り替え対応) */}
+          <Panel defaultSize={50} minSize={30} className="flex flex-col">
+            
+            {/* ★タブナビゲーション */}
+            <div className="flex border-b border-slate-800 bg-slate-900">
+              <button
+                onClick={() => setActiveTab("search")}
+                className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === "search" ? "bg-slate-800 text-blue-400 border-b-2 border-blue-500" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"}`}
+              >
+                <SearchIcon size={14} /> Search
+              </button>
+              <button
+                onClick={() => setActiveTab("analysis")}
+                className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === "analysis" ? "bg-slate-800 text-purple-400 border-b-2 border-purple-500" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"}`}
+              >
+                <BarChart3 size={14} /> Stats
+              </button>
+              <button
+                onClick={() => setActiveTab("sample")}
+                className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === "sample" ? "bg-slate-800 text-green-400 border-b-2 border-green-500" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"}`}
+              >
+                <Play size={14} /> Solitaire
+              </button>
+            </div>
+
+            {/* コンテンツ切り替え */}
+            <div className="flex-1 overflow-hidden relative">
+              {activeTab === "search" && (
+                <div className="absolute inset-0">
+                  <SearchPanel 
+                    searchResults={searchResults} 
+                    loading={loading} 
+                    onSearch={executeSearch}
+                    onAdd={addToDeck}
+                    language={language}
+                    expansionSetCode={selectedSet}
+                    expansionSetName={expansionNameMap[selectedSet]}
+                  />
+                </div>
+              )}
+              
+              {activeTab === "analysis" && (
+                <div className="absolute inset-0">
+                  <AnalysisPanel deck={deck} />
+                </div>
+              )}
+
+              {activeTab === "sample" && (
+                <div className="absolute inset-0">
+                  <SampleHandPanel deck={deck} />
+                </div>
+              )}
+            </div>
           </Panel>
 
           <PanelResizeHandle className="w-2 bg-slate-950 hover:bg-blue-600/50 transition-colors flex items-center justify-center">
@@ -509,6 +537,7 @@ useEffect(() => {
           </PanelResizeHandle>
 
           <Panel defaultSize={50} minSize={30}>
+            {/* デッキパネルは既存のまま */}
             <DeckPanel 
               deck={deck}
               sideboard={sideboard}
