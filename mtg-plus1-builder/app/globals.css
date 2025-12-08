@@ -37,6 +37,28 @@
   }
 }
 
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    /* リストの長さの半分（＝1セット分）移動したら瞬時に0に戻る */
+    transform: translateX(-50%);
+  }
+}
+
+.animate-scroll {
+  /* w-max でコンテンツ幅に合わせて横に伸びるようにする */
+  width: max-content;
+  animation: scroll 200s linear infinite;
+}
+
+/* ホバー時にアニメーションを一時停止させたい場合はコメントアウトを外す */
+/* .animate-scroll:hover {
+  animation-play-state: paused;
+} 
+*/
+
 body {
   background: var(--background);
   color: var(--foreground);
