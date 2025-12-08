@@ -463,7 +463,6 @@ useEffect(() => {
 return (
     <main className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden">
       
-      {/* ヘッダー (変更なし) */}
       <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0">
         <h1 className="text-lg font-bold mr-2 text-blue-400">MtG PLUS1</h1>
         <select value={selectedSet} onChange={(e) => setSelectedSet(e.target.value)} className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm max-w-[200px]" disabled={setsLoading}>
@@ -480,7 +479,7 @@ return (
           {/* 左パネル (タブ切り替え対応) */}
           <Panel defaultSize={50} minSize={30} className="flex flex-col">
             
-            {/* ★タブナビゲーション */}
+            {/* タブナビゲーション */}
             <div className="flex border-b border-slate-800 bg-slate-900">
               <button
                 onClick={() => setActiveTab("search")}
@@ -502,33 +501,32 @@ return (
               </button>
             </div>
 
-            {/* コンテンツ切り替え */}
-            <div className="flex-1 overflow-hidden relative">
-              {activeTab === "search" && (
-                <div className="absolute inset-0">
-                  <SearchPanel 
-                    searchResults={searchResults} 
-                    loading={loading} 
-                    onSearch={executeSearch}
-                    onAdd={addToDeck}
-                    language={language}
-                    expansionSetCode={selectedSet}
-                    expansionSetName={expansionNameMap[selectedSet]}
-                  />
-                </div>
-              )}
+            {/* コンテンツ切り替え (CSS hiddenを使用) */}
+            <div className="flex-1 overflow-hidden relative bg-slate-900/50">
               
-              {activeTab === "analysis" && (
-                <div className="absolute inset-0">
-                  <AnalysisPanel deck={deck} />
-                </div>
-              )}
+              {/* 1. Search Panel */}
+              <div className={`absolute inset-0 flex flex-col ${activeTab === "search" ? "z-10" : "hidden"}`}>
+                <SearchPanel 
+                  searchResults={searchResults} 
+                  loading={loading} 
+                  onSearch={executeSearch}
+                  onAdd={addToDeck}
+                  language={language}
+                  expansionSetCode={selectedSet}
+                  expansionSetName={expansionNameMap[selectedSet]}
+                />
+              </div>
+              
+              {/* 2. Analysis Panel */}
+              <div className={`absolute inset-0 flex flex-col ${activeTab === "analysis" ? "z-10" : "hidden"}`}>
+                <AnalysisPanel deck={deck} />
+              </div>
 
-              {activeTab === "sample" && (
-                <div className="absolute inset-0">
-                  <SampleHandPanel deck={deck} />
-                </div>
-              )}
+              {/* 3. Sample Hand Panel */}
+              <div className={`absolute inset-0 flex flex-col ${activeTab === "sample" ? "z-10" : "hidden"}`}>
+                <SampleHandPanel deck={deck} />
+              </div>
+
             </div>
           </Panel>
 
@@ -537,7 +535,6 @@ return (
           </PanelResizeHandle>
 
           <Panel defaultSize={50} minSize={30}>
-            {/* デッキパネルは既存のまま */}
             <DeckPanel 
               deck={deck}
               sideboard={sideboard}

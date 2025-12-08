@@ -91,7 +91,7 @@ export default function CardView<T extends Card>({
   actionType,
   isDeckArea = false,
   validationErrors = {},
-  keyCardIds = [],    // デフォルト値
+  keyCardIds = [], 
   onToggleKeyCard,
 }: Props<T>) {
 
@@ -125,9 +125,21 @@ export default function CardView<T extends Card>({
   const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
   const [activeError, setActiveError] = useState<{ message: string, rect: DOMRect } | null>(null);
 
-  const handleMouseEnter = (e: React.MouseEvent<HTMLLIElement>, imageUrl: string | undefined) => {
+  // ★修正点1: イベントターゲットの型を HTMLElement に変更し、div要素のイベントも受け取れるようにする
+  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, imageUrl: string | undefined) => {
+    // 1. まず既存のタイマーや表示をリセット
+    if (hoverTimeout.current) {
+      clearTimeout(hoverTimeout.current);
+    }
+    // 別のカードから移動してきた場合、即座に前のポップアップを消す
+    setHoveredImageUrl(null);
+    setPopupState(null);
+
     if (!imageUrl) return;
+    
     const target = e.currentTarget;
+    
+    // 2. 新しいタイマーをセット
     hoverTimeout.current = setTimeout(() => {
       const rect = target.getBoundingClientRect();
       const POPUP_WIDTH = 256;
@@ -148,7 +160,7 @@ export default function CardView<T extends Card>({
         side: side
       });
       setHoveredImageUrl(imageUrl);
-    }, 200); 
+    }, 250); // 誤表示を防ぐため、ウェイトを少し調整
   };
 
   const handleMouseLeave = () => {
@@ -166,7 +178,6 @@ export default function CardView<T extends Card>({
     setActiveError(null);
   };
 
-  // 枚数減少時のハンドラ: 1枚なら削除、それ以外なら-1
   const handleQuantityDecrease = (card: T, currentQuantity: number) => {
     if (currentQuantity <= 1) {
       onAction(card);
@@ -178,11 +189,10 @@ export default function CardView<T extends Card>({
   // グリッドモード
   if (mode === "grid") {
     return (
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 p-2 pb-20">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 p-2 pb-5">
         {cards.map((card, idx) => {
           const quantity = "quantity" in card ? (card as DeckCard).quantity : 0;
           const imageUrl = getImageUrl(card);
-          const manaCost = getManaCost(card);
           const displayName = getCardName(card);
           const isKeyCard = keyCardIds.includes(card.id);
           const error = validationErrors[card.id];
@@ -193,112 +203,110 @@ export default function CardView<T extends Card>({
               key={`${card.id}-${idx}`}
               onClick={() => onAction(card)}
               className="cursor-pointer hover:scale-105 transition-transform relative group"
+              // ★修正点2: グリッドのラッパーdivにマウスイベントハンドラを追加
+              onMouseEnter={(e) => handleMouseEnter(e, imageUrl)}
+              onMouseLeave={handleMouseLeave}
             >
-              {imageUrl ? (
-                <img
-                  src={imageUrl}
-                  alt={card.name}
-                  className={`rounded w-full shadow-md ${
-                    error ? "ring-2 ring-red-500 ring-offset-2 ring-offset-slate-900" : ""
-                  }`}
-                  loading="lazy"
-                />
-              ) : (
-                <div className="aspect-[5/7] bg-slate-800 flex items-center justify-center rounded p-2 text-center text-sm border border-slate-700">
-                  {displayName}
-                </div>
-              )}
-              
-              {isDeckArea && onToggleKeyCard && (
+              {/* 画像表示部分 */}
+              <div className={`relative aspect-[5/7] rounded-md overflow-hidden shadow-sm transition-transform hover:z-10 ${error ? "ring-2 ring-red-500" : "bg-slate-800"}`}>
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={card.name}
+                    className={`w-full h-full object-cover ${isBanned ? "grayscale opacity-70" : ""}`}
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center p-1 text-center text-[10px] text-slate-400 bg-slate-800">
+                    {displayName}
+                  </div>
+                )}
+
+                {/* キーカードボタン */}
+                {isDeckArea && onToggleKeyCard && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleKeyCard(card.id);
                     }}
-                    className={`absolute top-1 left-1 p-1.5 rounded-full shadow-lg backdrop-blur-sm transition-all z-10 ${
+                    className={`absolute top-0.5 left-0.5 p-1 rounded-full shadow-sm backdrop-blur-sm transition-all z-10 ${
                       isKeyCard 
-                        ? "bg-yellow-500/20 text-yellow-400 opacity-100" 
-                        : "bg-slate-900/40 text-slate-400 opacity-0 group-hover:opacity-100 hover:bg-slate-900/80 hover:text-white"
+                        ? "bg-yellow-500/80 text-white opacity-100" 
+                        : "bg-slate-900/40 text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-slate-900/80 hover:text-white"
                     }`}
                     title="キーカードに設定"
                   >
-                    <Star size={16} fill={isKeyCard ? "currentColor" : "none"} />
+                    <Star size={12} fill={isKeyCard ? "currentColor" : "none"} />
                   </button>
                 )}
 
-              {/* グリッド用エラー表示 */}
-              {error && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 pointer-events-none p-2 text-center">
-                  {isBanned ? (
-                    <Ban className="text-red-500 w-12 h-12 drop-shadow-md mb-1" />
-                  ) : (
-                    <AlertTriangle className="text-red-500 w-10 h-10 drop-shadow-md mb-1" />
-                  )}
-                  <span className="text-red-100 font-bold text-xs bg-red-900/80 px-2 py-1 rounded">
-                    {isBanned ? "BANNED" : "INVALID"}
-                  </span>
-                </div>
-              )}
-
-              {/* ホバー時のオーバーレイアクション（検索結果等はこれのみ） */}
-              {!isDeckArea && (
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded z-10">
-                  {actionType === "remove" ? (
-                    <MinusCircle className="text-red-400 w-10 h-10 drop-shadow-lg" />
-                  ) : (
-                    <PlusCircle className="text-white w-10 h-10 drop-shadow-lg" />
-                  )}
-                </div>
-              )}
-
-              {/* 【修正】デッキエリアの場合: 枚数調整コントロールを表示 */}
-              {isDeckArea && quantity > 0 && (
-                <div 
-                  className="absolute inset-x-0 bottom-0 p-2 bg-gradient-to-t from-black/90 via-black/60 to-transparent pt-6 rounded-b flex items-end justify-center z-30 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={(e) => e.stopPropagation()} // 親のクリックイベント(カード削除など)を防止
-                >
-                  <div className="flex items-center gap-1 bg-slate-900/90 rounded border border-slate-600 shadow-xl backdrop-blur-sm">
-                    <button 
-                      type="button"
-                      onClick={() => handleQuantityDecrease(card, quantity)}
-                      className="p-1.5 hover:bg-slate-700 text-slate-300 hover:text-red-400 rounded-l transition-colors"
-                      title="-1"
-                    >
-                      <Minus size={16} />
-                    </button>
-                    <span className="text-sm font-bold w-6 text-center text-white select-none">
-                      {quantity}
-                    </span>
-                    <button 
-                      type="button"
-                      onClick={() => onQuantityChange?.(card, 1)}
-                      className="p-1.5 hover:bg-slate-700 text-slate-300 hover:text-green-400 rounded-r transition-colors"
-                      title="+1"
-                    >
-                      <Plus size={16} />
-                    </button>
+                {/* 数量バッジ */}
+                {isDeckArea && (
+                  <div className="absolute bottom-0 right-0 bg-slate-900/90 text-white px-1.5 py-0.5 text-[10px] font-bold rounded-tl border-t border-l border-slate-700">
+                    x{quantity}
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* デッキエリアかつホバーしていない時の簡易枚数表示（左下） */}
+                {/* エラー表示 */}
+                {error && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 pointer-events-none p-1 text-center">
+                    {isBanned ? (
+                      <Ban className="text-red-500 w-8 h-8 drop-shadow-md mb-1" />
+                    ) : (
+                      <AlertTriangle className="text-red-500 w-6 h-6 drop-shadow-md mb-1" />
+                    )}
+                  </div>
+                )}
+
+                {/* 検索結果（非デッキエリア）用の追加ボタンオーバーレイ */}
+                {!isDeckArea && (
+                  <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
+                    {actionType === "remove" ? (
+                      <MinusCircle className="text-red-400 w-8 h-8 drop-shadow-lg" />
+                    ) : (
+                      <PlusCircle className="text-white w-8 h-8 drop-shadow-lg" />
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              {/* デッキエリア用の操作ボタン（グリッド下） */}
               {isDeckArea && quantity > 0 && (
-                <div className="absolute bottom-2 left-2 bg-black/80 text-white font-bold px-2 py-0.5 rounded text-sm shadow-md z-20 pointer-events-none group-hover:opacity-0 transition-opacity">
-                  ×{quantity}
+                <div className="mt-1 flex justify-center items-center gap-0.5 bg-slate-800/90 rounded border border-slate-700 p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); handleQuantityDecrease(card, quantity); }}
+                     className="p-0.5 hover:bg-slate-700 text-slate-400 hover:text-red-400 rounded transition-colors"
+                   >
+                     <Minus size={12} />
+                   </button>
+                   <span className="text-[10px] font-bold w-4 text-center text-white select-none">{quantity}</span>
+                   <button 
+                     onClick={(e) => { e.stopPropagation(); onQuantityChange?.(card, 1); }}
+                     className="p-0.5 hover:bg-slate-700 text-slate-400 hover:text-green-400 rounded transition-colors"
+                   >
+                     <Plus size={12} />
+                   </button>
                 </div>
               )}
             </div>
           );
         })}
+        {hoveredImageUrl && popupState && (
+          <PortalPopup 
+             imageUrl={hoveredImageUrl} 
+             position={popupState} 
+             side={popupState.side} 
+          />
+        )}
         {activeError && <PortalErrorTooltip message={activeError.message} rect={activeError.rect} />}
       </div>
     );
   }
 
-  // リスト表示モード
+  // リスト表示モード（変更なし）
   return (
     <>
-      <ul className="space-y-0.5 p-2 pb-3">
+      <ul className="space-y-0.5 p-2">
         {cards.map((card, idx) => {
           const quantity = "quantity" in card ? (card as DeckCard).quantity : 0;
           const manaCost = getManaCost(card);
@@ -306,10 +314,12 @@ export default function CardView<T extends Card>({
           const isKeyCard = keyCardIds.includes(card.id);
           const displayName = getCardName(card);
           const error = validationErrors[card.id];
+          const isBanned = error?.includes("BANNED");
 
           return (
             <li
               key={`${card.id}-${idx}`}
+              // リスト表示のマウスオーバーイベント
               onMouseEnter={(e) => handleMouseEnter(e, imageUrl)}
               onMouseLeave={handleMouseLeave}
               onClick={() => !isDeckArea && onAction(card)}
@@ -321,19 +331,20 @@ export default function CardView<T extends Card>({
                 }
               `}
             >
+              {/* ... (中略: リスト表示の内容は変更なし) ... */}
               {isDeckArea && onToggleKeyCard && (
                 <button
-                  onClick={() => onToggleKeyCard(card.id)}
-                  className={`p-1 rounded transition-colors ${
+                  onClick={(e) => { e.stopPropagation(); onToggleKeyCard(card.id); }}
+                  className={`p-1 rounded transition-colors shrink-0 mr-1 ${
                     isKeyCard 
                       ? "text-yellow-400 hover:text-yellow-300" 
                       : "text-slate-600 hover:text-slate-400"
                   }`}
-                  title="キーカードに設定"
                 >
                   <Star size={16} fill={isKeyCard ? "currentColor" : "none"} />
                 </button>
               )}
+
               <div className="flex items-center gap-3 overflow-hidden flex-1">
                 {isDeckArea && quantity > 0 && (
                   <span className="font-bold text-blue-300 w-6 shrink-0 text-right">
@@ -356,7 +367,11 @@ export default function CardView<T extends Card>({
                   onMouseEnter={(e) => handleErrorMouseEnter(e, error)}
                   onMouseLeave={handleErrorMouseLeave}
                 >
-                  <AlertTriangle size={18} className="text-red-500 animate-pulse" />
+                  {isBanned ? (
+                    <Ban size={18} className="text-red-500 animate-pulse" />
+                  ) : (
+                    <AlertTriangle size={18} className="text-red-500 animate-pulse" />
+                  )}
                 </div>
               )}
               
@@ -371,7 +386,6 @@ export default function CardView<T extends Card>({
                       type="button"
                       onClick={() => handleQuantityDecrease(card, quantity)}
                       className="p-1 hover:bg-slate-700 text-slate-400 hover:text-red-400 rounded-l transition-colors"
-                      title="-1"
                     >
                       <Minus size={14} />
                     </button>
@@ -379,8 +393,7 @@ export default function CardView<T extends Card>({
                     <button 
                       type="button"
                       onClick={() => onQuantityChange?.(card, 1)}
-                      className="p-1 hover:bg-slate-700 text-slate-400 hover:text-green-400 rounded-r transition-colors"
-                      title="+1"
+                      className="p-1 hover:bg-slate-700 text-slate-300 hover:text-green-400 rounded-r transition-colors"
                     >
                       <Plus size={14} />
                     </button>
@@ -388,7 +401,7 @@ export default function CardView<T extends Card>({
                 ) : (
                   <button 
                     type="button"
-                    onClick={() => onAction(card)}
+                    onClick={(e) => { e.stopPropagation(); onAction(card); }}
                     className="text-slate-500 hover:text-white p-1 transition-colors ml-1"
                   >
                     {actionType === "remove" ? (

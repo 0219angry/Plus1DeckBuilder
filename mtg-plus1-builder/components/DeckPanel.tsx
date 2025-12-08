@@ -743,7 +743,7 @@ export default function DeckPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-2 pb-10">
+      <div className="flex-1 overflow-y-auto px-2 pb-50">
         {currentProcessedData.length > 0 ? (
           currentProcessedData.map((group) => (
             <div key={group.name} className="mb-1">

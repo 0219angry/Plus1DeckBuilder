@@ -395,7 +395,7 @@ export default function SearchPanel({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto pb-50">
         <CardView 
           cards={searchResults} 
           mode={viewMode} 
