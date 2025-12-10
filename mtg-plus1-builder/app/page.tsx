@@ -1,14 +1,13 @@
 import Link from "next/link";
-import { ArrowRight, Layers, Image as ImageIcon, Globe, Ban, AlertTriangle } from "lucide-react";
+import { ArrowRight, Layers, Image as ImageIcon, Globe, Ban, AlertTriangle, Map } from "lucide-react"; // Mapアイコン追加
 import Footer from "@/components/Footer";
-// ★追加
 import ExpansionMarquee from "@/components/ExpansionMarquee";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col selection:bg-blue-500/30">
       
-      {/* ヘッダー (変更なし) */}
+      {/* ヘッダー */}
       <header className="px-6 py-4 flex justify-between items-center border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
@@ -16,10 +15,15 @@ export default function LandingPage() {
           </div>
           <span className="font-bold text-xl tracking-tight text-white">MtG PLUS1</span>
         </div>
-        <nav className="flex gap-4 text-sm font-medium">
-          <Link href="/banned-cards" className="hover:text-red-400 transition-colors flex items-center gap-1">
+        <nav className="flex gap-4 text-sm font-medium items-center">
+          <Link href="/banned-cards" className="hover:text-red-400 transition-colors flex items-center gap-1 hidden sm:flex">
             <Ban size={16} /> 禁止カード
           </Link>
+          {/* ★追加: ロードマップへのリンク */}
+          <Link href="/roadmap" className="hover:text-blue-400 transition-colors flex items-center gap-1 hidden sm:flex">
+            <Map size={16} /> 開発状況
+          </Link>
+          
           <Link 
             href="/builder" 
             className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-full transition-all shadow-lg hover:shadow-blue-500/25 flex items-center gap-2"
@@ -30,13 +34,20 @@ export default function LandingPage() {
       </header>
 
       <main className="flex-1 flex flex-col">
+        {/* (メインコンテンツは変更なし) */}
         
-        {/* ヒーローセクション (変更なし) */}
+        {/* ヒーローセクション */}
         <section className="relative py-20 md:py-32 px-6 overflow-hidden">
           <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] -z-10 pointer-events-none" />
           
           <div className="max-w-4xl mx-auto text-center space-y-8">
-
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-900/30 border border-blue-800 text-blue-300 text-xs font-medium mb-4">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span>
+              </span>
+              Foundations 対応済み
+            </div>
             
             <h1 className="text-4xl md:text-6xl font-extrabold text-white tracking-tight leading-tight">
               Build for <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">PLUS1</span> Format
@@ -65,7 +76,7 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* 機能紹介グリッド (変更なし) */}
+        {/* 機能紹介グリッド */}
         <section className="py-20 px-6 bg-slate-900/50 border-y border-slate-800">
           <div className="max-w-6xl mx-auto">
             <h2 className="text-2xl font-bold text-center mb-12 text-white">主な機能</h2>
@@ -77,7 +88,7 @@ export default function LandingPage() {
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">言語統一 & 整形</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                  英語版しかないカードも、日本語版があるカードも、ボタン一つでリスト上の表記を日本語に統一。ルビ（ふりがな）の自動削除機能も搭載。
+                  英語版しかないカードも、日本語版があるカードも、ボタン一つでリスト上の表記を日本語に統一。
                 </p>
               </div>
 
@@ -104,18 +115,18 @@ export default function LandingPage() {
           </div>
         </section>
 
-        {/* ★変更: セット一覧セクション */}
+        {/* セット一覧セクション */}
         <section className="py-20 overflow-hidden">
           <div className="max-w-4xl mx-auto text-center mb-12 px-6">
             <h2 className="text-2xl font-bold text-white flex items-center justify-center gap-2">
               <Layers size={24} className="text-slate-400" />
               対応エキスパンション
             </h2>
+            <p className="text-slate-500 text-sm mt-2">
+              管理データベースから自動取得・更新されます
+            </p>
           </div>
-          
-          {/* ここにマーキーコンポーネントを配置 */}
           <ExpansionMarquee />
-          
         </section>
 
       </main>
