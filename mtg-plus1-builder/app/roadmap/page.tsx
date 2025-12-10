@@ -1,33 +1,17 @@
 "use client";
 
-import { useState } from "react";
-import { useAppStatus, StatusItem } from "@/hooks/useAppStatus";
-import { ArrowLeft, Bug, Lightbulb, CheckCircle2, Circle, Clock, AlertCircle, Plus, Trash2, Loader2 } from "lucide-react";
+import { useAppStatus } from "@/hooks/useAppStatus";
+import { ArrowLeft, Bug, Lightbulb, CheckCircle2, Circle, Clock, AlertCircle, Loader2, MessageSquare } from "lucide-react";
 import Link from "next/link";
 
 export default function RoadmapPage() {
-  const { items, loading, addItem, removeItem } = useAppStatus();
+  const { items, loading } = useAppStatus();
   
-  // 管理用フォームState
-  const [showAdmin, setShowAdmin] = useState(false);
-  const [title, setTitle] = useState("");
-  const [desc, setDesc] = useState("");
-  const [type, setType] = useState<StatusItem["type"]>("bug");
-  const [status, setStatus] = useState<StatusItem["status"]>("investigating");
-
   const bugs = items.filter(i => i.type === "bug");
   const features = items.filter(i => i.type !== "bug");
 
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title) return;
-    await addItem({ title, description: desc, type, status });
-    setTitle("");
-    setDesc("");
-  };
-
   // ステータスのバッジ表示
-  const StatusBadge = ({ status }: { status: StatusItem["status"] }) => {
+  const StatusBadge = ({ status }: { status: string }) => {
     switch (status) {
       case "fixed":
       case "released":
@@ -54,6 +38,28 @@ export default function RoadmapPage() {
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-6 space-y-12">
         
+        {/* Discord誘導バナー (DM版) */}
+        <div className="bg-indigo-900/20 border border-indigo-500/30 rounded-xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="space-y-2">
+            <h2 className="text-lg font-bold text-indigo-300 flex items-center gap-2">
+              <MessageSquare className="text-indigo-400" />
+              フィードバックを送信
+            </h2>
+            <p className="text-sm text-indigo-200/80">
+              新しい機能のアイデアや、バグの報告はDiscordのDMで受け付けています。<br className="hidden sm:block" />
+              お気軽に開発者までメッセージをお送りください！
+            </p>
+          </div>
+          <a 
+            href="https://discord.com/users/687118167503667213" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="whitespace-nowrap px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full transition-colors shadow-lg shadow-indigo-900/50 flex items-center gap-2"
+          >
+            開発者にDMを送る
+          </a>
+        </div>
+
         {/* 不具合セクション */}
         <section>
           <h2 className="text-lg font-bold text-red-400 flex items-center gap-2 mb-4 border-b border-red-900/30 pb-2">
@@ -73,10 +79,6 @@ export default function RoadmapPage() {
                   {item.description && <p className="text-sm text-slate-400 leading-relaxed">{item.description}</p>}
                   <div className="text-[10px] text-slate-600 mt-2">ID: {item.id}</div>
                 </div>
-                {/* 削除ボタン (Adminモード時のみ表示でも良いが、簡易的に常時隠しボタンとして実装) */}
-                {showAdmin && (
-                  <button onClick={() => removeItem(item.id)} className="text-slate-600 hover:text-red-500 self-start"><Trash2 size={16}/></button>
-                )}
               </div>
             ))}
           </div>
@@ -102,13 +104,11 @@ export default function RoadmapPage() {
                   </div>
                   {item.description && <p className="text-sm text-slate-400 leading-relaxed">{item.description}</p>}
                 </div>
-                {showAdmin && (
-                  <button onClick={() => removeItem(item.id)} className="text-slate-600 hover:text-red-500 self-start"><Trash2 size={16}/></button>
-                )}
               </div>
             ))}
           </div>
         </section>
+
       </main>
     </div>
   );
