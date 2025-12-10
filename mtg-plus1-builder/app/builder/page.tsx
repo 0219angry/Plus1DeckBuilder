@@ -139,41 +139,49 @@ useEffect(() => {
     }
   }, [deck, sideboard, deckName, deckComment, selectedSet, language, keyCardIds]);
 
-const executeSearch = async (queryWithOptions: string) => {
+  const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
     setLoading(true);
     
     try {
-      // 1. 基本設定
-      // Foundationsをすべて対象にする
-      const foundationsSets = "set:fdn";
-      const baseQuery = `(${foundationsSets} OR set:${selectedSet}) unique:prints`;
+      // 1. クエリの構築
+      // セット指定の重複を防ぐ (例: selectedSetが 'fdn' の場合に重複しないようにする)
+      const targetSets = new Set(['fdn', 'fbb', 'j25']); // Foundations関連
+      if (selectedSet) targetSets.add(selectedSet);
       
-      // 言語は「日本語または英語」を許容する
+      // "set:fdn OR set:fbb ..." の形を作る
+      const setsQuery = Array.from(targetSets).map(s => `set:${s}`).join(" OR ");
+      const baseQuery = `(${setsQuery}) unique:prints`;
+      
+      // 言語指定
       const langQuery = language === 'ja' ? `(lang:ja OR lang:en)` : `lang:en`;
       const primaryQuery = `${baseQuery} ${langQuery} ${queryWithOptions}`;
       
       const promises = [];
 
-      // --- ヘルパー: 404エラーや414エラー(URL長すぎ)を無視して検索する ---
+      // --- ヘルパー: 404エラーを「0件」として扱うfetchラッパー ---
       const safeFetch = (url: string) => {
         return fetch(url)
           .then(async (res) => {
-            if (res.status === 404) return []; // 0件なら空配列
+            // 404は「見つからなかった」だけなのでエラーにせず空配列を返す
+            if (res.status === 404) return [];
+            
             if (!res.ok) {
-              console.warn(`API Error ${res.status} for URL: ${url}`);
-              return []; // エラー時は空配列を返して処理を止めない
+              // 404以外のエラーはログに出す
+              console.warn(`API Warning: ${res.status} ${res.statusText}`);
+              return [];
             }
             const json = await res.json();
             return json.data || [];
           })
           .catch(e => {
-            console.warn("Search ignored:", e);
+            console.error("Fetch failed:", e);
             return [];
           });
       };
 
       // --- A. メイン検索 (セット指定あり) ---
+      // ここで404が出ても safeFetch がキャッチするのでアプリは止まらない
       promises.push(
         safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`)
       );
@@ -189,17 +197,16 @@ const executeSearch = async (queryWithOptions: string) => {
           .then(async (jaCards: any[]) => {
             if (jaCards.length === 0) return [];
 
-            // 見つかった日本語カードから Oracle ID を抽出
+            // 見つかった日本語カードから Oracle ID を抽出 (最大20件)
             const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
-            // 重複排除して、URLエラー防止のため「上位20件」に絞る
             const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
 
             if (uniqueOracleIds.length === 0) return [];
 
             // 2. そのIDを持つカードを、Foundations関連セット等からピンポイント検索
+            // ID検索なら「英語名(Disenchant)」のカードもヒットする
             const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
-            // ここでも FDN, FBB, J25 をすべて対象にする
-            const targetSetQuery = `(${oracleQueryPart}) (${foundationsSets} OR set:${selectedSet}) unique:prints`;
+            const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
             
             const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
 
@@ -239,7 +246,7 @@ const executeSearch = async (queryWithOptions: string) => {
       setSearchResults(Array.from(uniqueCardsMap.values()));
 
     } catch (error) {
-      console.error("Search error:", error);
+      console.error("Search critical error:", error);
       setSearchResults([]);
     } finally {
       setLoading(false);
