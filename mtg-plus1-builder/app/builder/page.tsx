@@ -145,7 +145,7 @@ const executeSearch = async (queryWithOptions: string) => {
     
     try {
       // 1. 基本設定
-      const targetSets = new Set(['fdn', 'fbb', 'j25']); // Foundations関連
+      const targetSets = new Set(['fdn']); // Foundations関連
       if (selectedSet) targetSets.add(selectedSet);
       
       const setsQuery = Array.from(targetSets).map(s => `set:${s}`).join(" OR ");
