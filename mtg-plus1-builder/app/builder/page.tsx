@@ -139,36 +139,31 @@ useEffect(() => {
     }
   }, [deck, sideboard, deckName, deckComment, selectedSet, language, keyCardIds]);
 
-  const executeSearch = async (queryWithOptions: string) => {
+const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
     setLoading(true);
     
     try {
-      // 1. クエリの構築
-      // セット指定の重複を防ぐ (例: selectedSetが 'fdn' の場合に重複しないようにする)
+      // 1. 基本設定
       const targetSets = new Set(['fdn', 'fbb', 'j25']); // Foundations関連
       if (selectedSet) targetSets.add(selectedSet);
       
-      // "set:fdn OR set:fbb ..." の形を作る
       const setsQuery = Array.from(targetSets).map(s => `set:${s}`).join(" OR ");
       const baseQuery = `(${setsQuery}) unique:prints`;
-      
-      // 言語指定
       const langQuery = language === 'ja' ? `(lang:ja OR lang:en)` : `lang:en`;
+      
+      // Aルート用のクエリ（通常検索）
       const primaryQuery = `${baseQuery} ${langQuery} ${queryWithOptions}`;
       
       const promises = [];
 
-      // --- ヘルパー: 404エラーを「0件」として扱うfetchラッパー ---
+      // ヘルパー: 404を無視するfetch
       const safeFetch = (url: string) => {
         return fetch(url)
           .then(async (res) => {
-            // 404は「見つからなかった」だけなのでエラーにせず空配列を返す
             if (res.status === 404) return [];
-            
             if (!res.ok) {
-              // 404以外のエラーはログに出す
-              console.warn(`API Warning: ${res.status} ${res.statusText}`);
+              console.warn(`API Warning: ${res.status}`);
               return [];
             }
             const json = await res.json();
@@ -180,62 +175,71 @@ useEffect(() => {
           });
       };
 
-      // --- A. メイン検索 (セット指定あり) ---
-      // ここで404が出ても safeFetch がキャッチするのでアプリは止まらない
+      // --- A. メイン検索 ---
       promises.push(
         safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`)
       );
 
-      // --- B. クロス検索 (日本語入力時のみ発動) ---
+      // --- B. クロス検索 (日本語入力時のみ) ---
       const hasJapaneseInput = /[ぁ-んァ-ン一-龠]/.test(queryWithOptions);
       
       if (language === 'ja' && hasJapaneseInput) {
-        // 1. セット指定を外して、日本語名でカードの「正体(OracleID)」を探す
-        const nameQuery = `${queryWithOptions} lang:ja unique:prints`;
         
-        const oracleSearchPromise = safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}`)
-          .then(async (jaCards: any[]) => {
-            if (jaCards.length === 0) return [];
+        // ★★★ 修正ポイント: 検索ワードからセット指定やカッコを強制削除する ★★★
+        // 例: "解呪 (set:fdn)" -> "解呪 "
+        let cleanQuery = queryWithOptions
+          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "") // (s:fdn OR s:...) の除去
+          .replace(/set:[a-zA-Z0-9]+/gi, "") // set:xxx の除去
+          .replace(/s:[a-zA-Z0-9]+/gi, "")   // s:xxx の除去
+          .replace(/[()]/g, "")              // 残ったカッコの除去
+          .trim();
 
-            // 見つかった日本語カードから Oracle ID を抽出 (最大20件)
-            const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
-            const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
-
-            if (uniqueOracleIds.length === 0) return [];
-
-            // 2. そのIDを持つカードを、Foundations関連セット等からピンポイント検索
-            // ID検索なら「英語名(Disenchant)」のカードもヒットする
-            const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
-            const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
-            
-            const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
-
-            // 3. 英語版のデータに、日本語名を上書きして返す
-            return targetCards.map((engCard: any) => {
-              const originalJa = jaCards.find((ja: any) => ja.oracle_id === engCard.oracle_id);
-              if (originalJa) {
-                const formattedJa = formatCardData(originalJa);
-                return {
-                  ...engCard,
-                  printed_name: formattedJa.printed_name,
-                  card_faces: engCard.card_faces ? engCard.card_faces.map((face: any, idx: number) => ({
-                    ...face,
-                    printed_name: formattedJa.card_faces?.[idx]?.printed_name || face.printed_name
-                  })) : undefined
-                };
-              }
-              return engCard;
-            });
-          });
+        if (cleanQuery) {
+          // 1. クリーンになった単語だけで、全セットから日本語カードを探す
+          const nameQuery = `${cleanQuery} lang:ja unique:prints`;
           
-        promises.push(oracleSearchPromise);
+          const oracleSearchPromise = safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}`)
+            .then(async (jaCards: any[]) => {
+              if (jaCards.length === 0) return [];
+
+              // 見つかったカードのOracle IDを抽出 (上位20件)
+              const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
+              const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
+
+              if (uniqueOracleIds.length === 0) return [];
+
+              // 2. そのIDを持つカードをFoundations等から検索
+              const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
+              const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
+              
+              const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
+
+              // 3. 日本語名を注入
+              return targetCards.map((engCard: any) => {
+                const originalJa = jaCards.find((ja: any) => ja.oracle_id === engCard.oracle_id);
+                if (originalJa) {
+                  const formattedJa = formatCardData(originalJa);
+                  return {
+                    ...engCard,
+                    printed_name: formattedJa.printed_name,
+                    card_faces: engCard.card_faces ? engCard.card_faces.map((face: any, idx: number) => ({
+                      ...face,
+                      printed_name: formattedJa.card_faces?.[idx]?.printed_name || face.printed_name
+                    })) : undefined
+                  };
+                }
+                return engCard;
+              });
+            });
+            
+          promises.push(oracleSearchPromise);
+        }
       }
 
       // 3. 結果の統合
       const results = await Promise.all(promises);
       const allCards = results.flat();
       
-      // 重複除去 (IDで判定)
       const uniqueCardsMap = new Map();
       allCards.forEach((c: any) => {
         if (c && c.id && !uniqueCardsMap.has(c.id)) {
