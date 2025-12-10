@@ -15,10 +15,10 @@ import {
 
 // --- 型定義 ---
 export type StatusItem = {
-  id: string;       // 一意のID (タイムスタンプ等)
+  id: string;
   title: string;
   description?: string;
-  type: "bug" | "feature" | "improvement"; // 不具合 | 新機能 | 改善
+  type: "bug" | "feature" | "improvement";
   status: "pending" | "investigating" | "in-progress" | "fixed" | "released"; 
   createdAt: number;
 };
@@ -27,7 +27,7 @@ export type AppStatusData = {
   items: StatusItem[];
 };
 
-// --- Firebase設定 (他フックと同様) ---
+// --- Firebase設定 ---
 const getFirebaseConfig = () => {
   if (typeof window !== 'undefined' && (window as any).__firebase_config) {
     try { return JSON.parse((window as any).__firebase_config); } catch (e) { console.error(e); }
@@ -65,7 +65,7 @@ export function useAppStatus() {
   const [items, setItems] = useState<StatusItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Firestoreパス: artifacts/{appId}/public/data/app_status/list
+  // Firestoreパス
   const getDocRef = () => {
     if (!db) return null;
     return doc(db, 'artifacts', appId, 'public', 'data', 'app_status', 'list');
@@ -95,7 +95,6 @@ export function useAppStatus() {
         unsubscribe = onSnapshot(docRef, (snap) => {
           if (snap.exists()) {
             const data = snap.data() as AppStatusData;
-            // 新しい順にソート
             const sorted = (data.items || []).sort((a, b) => b.createdAt - a.createdAt);
             setItems(sorted);
           } else {
@@ -115,7 +114,7 @@ export function useAppStatus() {
     return () => { if (unsubscribe) unsubscribe(); };
   }, []);
 
-  // --- 追加機能 ---
+  // 追加
   const addItem = async (item: Omit<StatusItem, "id" | "createdAt">) => {
     if (!db) return;
     const docRef = getDocRef();
@@ -139,7 +138,7 @@ export function useAppStatus() {
     }
   };
 
-  // --- 削除機能 ---
+  // 削除
   const removeItem = async (id: string) => {
     if (!db) return;
     const docRef = getDocRef();
@@ -155,5 +154,30 @@ export function useAppStatus() {
     }
   };
 
-  return { items, loading, addItem, removeItem };
+  // ★追加: ステータス更新
+  const updateStatus = async (id: string, newStatus: StatusItem["status"]) => {
+    if (!db) return;
+    const docRef = getDocRef();
+    if (!docRef) return;
+
+    try {
+      const snap = await getDoc(docRef);
+      const currentData = snap.exists() ? (snap.data() as AppStatusData) : { items: [] };
+      
+      const newItems = currentData.items.map(item => {
+        if (item.id === id) {
+          return { ...item, status: newStatus };
+        }
+        return item;
+      });
+
+      setItems(newItems); // 楽観的更新
+      await setDoc(docRef, { items: newItems }, { merge: true });
+    } catch (e) {
+      console.error("Failed to update status:", e);
+      alert("更新に失敗しました");
+    }
+  };
+
+  return { items, loading, addItem, removeItem, updateStatus };
 }

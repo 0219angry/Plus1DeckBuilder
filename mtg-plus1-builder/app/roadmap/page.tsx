@@ -109,58 +109,6 @@ export default function RoadmapPage() {
             ))}
           </div>
         </section>
-
-        {/* 簡易管理者モード (フッター付近の隠し機能などでトグルさせても良い) */}
-        <div className="pt-10 border-t border-slate-800">
-          <button 
-            onClick={() => setShowAdmin(!showAdmin)} 
-            className="text-xs text-slate-700 hover:text-slate-500 mb-4"
-          >
-            {showAdmin ? "Close Admin Tools" : "Admin Tools"}
-          </button>
-
-          {showAdmin && (
-            <form onSubmit={handleAdd} className="bg-slate-900 p-4 rounded border border-slate-700 space-y-3">
-              <h3 className="font-bold text-sm text-slate-300">新規項目の追加</h3>
-              <div className="grid grid-cols-2 gap-2">
-                <select 
-                  className="bg-slate-800 border border-slate-700 rounded p-1 text-sm text-white"
-                  value={type} onChange={(e) => setType(e.target.value as any)}
-                >
-                  <option value="bug">不具合 (Bug)</option>
-                  <option value="improvement">改善 (Improvement)</option>
-                  <option value="feature">新機能 (Feature)</option>
-                </select>
-                <select 
-                  className="bg-slate-800 border border-slate-700 rounded p-1 text-sm text-white"
-                  value={status} onChange={(e) => setStatus(e.target.value as any)}
-                >
-                  <option value="pending">未着手 (Pending)</option>
-                  <option value="investigating">調査中 (Investigating)</option>
-                  <option value="in-progress">対応中 (In Progress)</option>
-                  <option value="fixed">修正済み (Fixed)</option>
-                  <option value="released">リリース済み (Released)</option>
-                </select>
-              </div>
-              <input 
-                type="text" 
-                placeholder="タイトル" 
-                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white"
-                value={title} onChange={(e) => setTitle(e.target.value)}
-                required
-              />
-              <textarea 
-                placeholder="詳細" 
-                className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white h-20"
-                value={desc} onChange={(e) => setDesc(e.target.value)}
-              />
-              <button className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-sm font-bold flex items-center gap-2">
-                <Plus size={16}/> 追加
-              </button>
-            </form>
-          )}
-        </div>
-
       </main>
     </div>
   );
