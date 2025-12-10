@@ -139,37 +139,118 @@ useEffect(() => {
     }
   }, [deck, sideboard, deckName, deckComment, selectedSet, language, keyCardIds]);
 
-  const executeSearch = async (queryWithOptions: string) => {
+const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
     setLoading(true);
+    
     try {
-      // ベースクエリの構築
-      let baseQuery = `(set:fdn OR set:${selectedSet}) lang:${language} unique:cards`;
-      let finalQuery = `${baseQuery} ${queryWithOptions}`;
+      // 1. 基本設定
+      const targetSets = new Set(['fdn']); // Foundations関連
+      if (selectedSet) targetSets.add(selectedSet);
       
-      let url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(finalQuery)}`;
-      let res = await fetch(url);
-      let data = await res.json();
+      const setsQuery = Array.from(targetSets).map(s => `set:${s}`).join(" OR ");
+      const baseQuery = `(${setsQuery}) unique:prints`;
+      const langQuery = language === 'ja' ? `(lang:ja OR lang:en)` : `lang:en`;
+      
+      // Aルート用のクエリ（通常検索）
+      const primaryQuery = `${baseQuery} ${langQuery} ${queryWithOptions}`;
+      
+      const promises = [];
 
-      // 日本語で見つからない場合のフォールバック（英語検索）
-      if ((!data.data || data.data.length === 0) && language === 'ja') {
-        baseQuery = `(set:fdn OR set:${selectedSet}) lang:en unique:cards`;
-        finalQuery = `${baseQuery} ${queryWithOptions}`;
-        url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(finalQuery)}`;
-        res = await fetch(url);
-        data = await res.json();
+      // ヘルパー: 404を無視するfetch
+      const safeFetch = (url: string) => {
+        return fetch(url)
+          .then(async (res) => {
+            if (res.status === 404) return [];
+            if (!res.ok) {
+              console.warn(`API Warning: ${res.status}`);
+              return [];
+            }
+            const json = await res.json();
+            return json.data || [];
+          })
+          .catch(e => {
+            console.error("Fetch failed:", e);
+            return [];
+          });
+      };
+
+      // --- A. メイン検索 ---
+      promises.push(
+        safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`)
+      );
+
+      // --- B. クロス検索 (日本語入力時のみ) ---
+      const hasJapaneseInput = /[ぁ-んァ-ン一-龠]/.test(queryWithOptions);
+      
+      if (language === 'ja' && hasJapaneseInput) {
+        
+        // ★★★ 修正ポイント: 検索ワードからセット指定やカッコを強制削除する ★★★
+        // 例: "解呪 (set:fdn)" -> "解呪 "
+        let cleanQuery = queryWithOptions
+          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "") // (s:fdn OR s:...) の除去
+          .replace(/set:[a-zA-Z0-9]+/gi, "") // set:xxx の除去
+          .replace(/s:[a-zA-Z0-9]+/gi, "")   // s:xxx の除去
+          .replace(/[()]/g, "")              // 残ったカッコの除去
+          .trim();
+
+        if (cleanQuery) {
+          // 1. クリーンになった単語だけで、全セットから日本語カードを探す
+          const nameQuery = `${cleanQuery} lang:ja unique:prints`;
+          
+          const oracleSearchPromise = safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}`)
+            .then(async (jaCards: any[]) => {
+              if (jaCards.length === 0) return [];
+
+              // 見つかったカードのOracle IDを抽出 (上位20件)
+              const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
+              const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
+
+              if (uniqueOracleIds.length === 0) return [];
+
+              // 2. そのIDを持つカードをFoundations等から検索
+              const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
+              const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
+              
+              const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
+
+              // 3. 日本語名を注入
+              return targetCards.map((engCard: any) => {
+                const originalJa = jaCards.find((ja: any) => ja.oracle_id === engCard.oracle_id);
+                if (originalJa) {
+                  const formattedJa = formatCardData(originalJa);
+                  return {
+                    ...engCard,
+                    printed_name: formattedJa.printed_name,
+                    card_faces: engCard.card_faces ? engCard.card_faces.map((face: any, idx: number) => ({
+                      ...face,
+                      printed_name: formattedJa.card_faces?.[idx]?.printed_name || face.printed_name
+                    })) : undefined
+                  };
+                }
+                return engCard;
+              });
+            });
+            
+          promises.push(oracleSearchPromise);
+        }
       }
 
-      const rawResults: Card[] = data.data || [];
+      // 3. 結果の統合
+      const results = await Promise.all(promises);
+      const allCards = results.flat();
       
-      // ★★★ ここを追加・修正 ★★★
-      // 検索結果のカードデータにも整形処理（両面カードの名前結合、フリガナ削除）を適用する
-      const formattedResults = rawResults.map(card => formatCardData(card));
+      const uniqueCardsMap = new Map();
+      allCards.forEach((c: any) => {
+        if (c && c.id && !uniqueCardsMap.has(c.id)) {
+          uniqueCardsMap.set(c.id, formatCardData(c));
+        }
+      });
 
-      setSearchResults(formattedResults);
+      setSearchResults(Array.from(uniqueCardsMap.values()));
 
     } catch (error) {
-      console.error(error);
+      console.error("Search critical error:", error);
       setSearchResults([]);
     } finally {
       setLoading(false);
