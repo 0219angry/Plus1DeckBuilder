@@ -9,12 +9,15 @@ export default function LandingPage() {
       
       {/* ヘッダー */}
       <header className="px-6 py-4 flex justify-between items-center border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="flex items-center gap-2">
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        >
           <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
             +1
           </div>
           <span className="font-bold text-xl tracking-tight text-white">MtG PLUS1</span>
-        </div>
+        </Link>
         <nav className="flex gap-4 text-sm font-medium items-center">
           <Link href="/banned-cards" className="hover:text-red-400 transition-colors flex items-center gap-1 hidden sm:flex">
             <Ban size={16} /> 禁止カード
