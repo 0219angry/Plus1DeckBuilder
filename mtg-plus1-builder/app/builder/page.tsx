@@ -162,21 +162,24 @@ export default function BuilderPage() {
     
     try {
       // 1. 基本設定
-      const targetSets = new Set(['fdn', 'fbb', 'j25']); // Foundations関連
+      // Foundations関連セット (FDN, FBB=ビギナー, J25=ジャンプスタート) をすべて対象にする
+      const targetSets = new Set(['fdn']); 
       if (selectedSet) targetSets.add(selectedSet);
       
       const setsQuery = Array.from(targetSets).map(s => `set:${s}`).join(" OR ");
       const baseQuery = `(${setsQuery}) unique:prints`;
       const langQuery = language === 'ja' ? `(lang:ja OR lang:en)` : `lang:en`;
       
+      // Aルート用のクエリ（通常検索）
       const primaryQuery = `${baseQuery} ${langQuery} ${queryWithOptions}`;
       
       const promises = [];
 
+      // ヘルパー: 404エラーを「0件」として扱うfetchラッパー
       const safeFetch = (url: string) => {
         return fetch(url)
           .then(async (res) => {
-            if (res.status === 404) return [];
+            if (res.status === 404) return []; // 404なら空配列を返して終了
             if (!res.ok) {
               console.warn(`API Warning: ${res.status}`);
               return [];
@@ -190,39 +193,48 @@ export default function BuilderPage() {
           });
       };
 
-      // --- A. メイン検索 ---
+      // --- A. メイン検索 (セット指定あり) ---
       promises.push(
         safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`)
       );
 
-      // --- B. クロス検索 ---
+      // --- B. クロス検索 (日本語入力時のみ発動) ---
       const hasJapaneseInput = /[ぁ-んァ-ン一-龠]/.test(queryWithOptions);
       
       if (language === 'ja' && hasJapaneseInput) {
+        
+        // ★★★ 修正ポイント: 検索ワードからセット指定やカッコを強制削除する ★★★
+        // 例: "解呪 (set:fdn)" -> "解呪 "
+        // これにより「全セットから『解呪』を探す」ことが可能になる
         let cleanQuery = queryWithOptions
-          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "")
-          .replace(/set:[a-zA-Z0-9]+/gi, "")
-          .replace(/s:[a-zA-Z0-9]+/gi, "")
-          .replace(/[()]/g, "")
+          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "") // (s:fdn OR s:...) の除去
+          .replace(/set:[a-zA-Z0-9]+/gi, "") // set:xxx の除去
+          .replace(/s:[a-zA-Z0-9]+/gi, "")   // s:xxx の除去
+          .replace(/[()]/g, "")              // 残ったカッコの除去
           .trim();
 
         if (cleanQuery) {
+          // 1. クリーンになった単語だけで、全セットから日本語カードを探す
           const nameQuery = `${cleanQuery} lang:ja unique:prints`;
           
           const oracleSearchPromise = safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}`)
             .then(async (jaCards: any[]) => {
               if (jaCards.length === 0) return [];
 
+              // 見つかった日本語カードから Oracle ID を抽出
               const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
+              // 重複排除して、URLエラー防止のため「上位20件」に絞る
               const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
 
               if (uniqueOracleIds.length === 0) return [];
 
+              // 2. そのIDを持つカードを、Foundations関連セット等からピンポイント検索
               const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
               const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
               
               const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
 
+              // 3. 英語版のデータに、日本語名を上書きして返す
               return targetCards.map((engCard: any) => {
                 const originalJa = jaCards.find((ja: any) => ja.oracle_id === engCard.oracle_id);
                 if (originalJa) {
@@ -250,19 +262,21 @@ export default function BuilderPage() {
       
       const uniqueCardsMap = new Map();
       allCards.forEach((c: any) => {
-        if (c && c.oracle_id) { // oracle_idをキーにする
+        if (c && c.oracle_id) { // oracle_idをキーにして同一カードをまとめる
           const existing = uniqueCardsMap.get(c.oracle_id);
           const formattedNew = formatCardData(c);
 
           if (!existing) {
             uniqueCardsMap.set(c.oracle_id, formattedNew);
           } else {
+            // 既にリストにある場合、より良い条件の方を残す
             let replace = false;
-            // 日本語優先
+
+            // 基準1: 言語 (日本語優先)
             if (existing.lang !== 'ja' && formattedNew.lang === 'ja') {
               replace = true;
             }
-            // 番号が若い方を優先
+            // 基準2: 同じ言語なら、コレクション番号が若い方(通常版)を優先
             else if (existing.lang === formattedNew.lang) {
               const numA = parseInt(existing.collector_number, 10);
               const numB = parseInt(formattedNew.collector_number, 10);
@@ -270,6 +284,7 @@ export default function BuilderPage() {
                 replace = true;
               }
             }
+
             if (replace) {
               uniqueCardsMap.set(c.oracle_id, formattedNew);
             }
