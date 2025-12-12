@@ -1,4 +1,4 @@
-import { Info, Plus, Trash2, Check, ChevronDown, Languages, Search } from "lucide-react";
+import { Info, Plus, Trash2, Check, ChevronDown, Languages, Search, User } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { TurnMove } from "@/types";
 import { MTG_COLORS, getDeckColorName } from "@/lib/mtg";
@@ -39,7 +39,7 @@ type Props = {
 
 export default function InfoPanel({ 
   colors, setColors,
-  builderName, setBuilderName
+  builderName, setBuilderName,
   archetype, setArchetype, 
   concepts, setConcepts, 
   turnMoves, setTurnMoves,
