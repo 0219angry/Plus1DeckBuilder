@@ -31,6 +31,13 @@ export type Card = {
   oracle_id?: string; 
 };
 
+// ターンごとの動きの型定義
+export type TurnMove = {
+  id: string;
+  turn: string;
+  action: string;
+};
+
 export type DeckCard = Card & {
   quantity: number;
 };
