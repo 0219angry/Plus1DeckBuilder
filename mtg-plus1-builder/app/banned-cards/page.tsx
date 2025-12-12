@@ -149,7 +149,7 @@ export default function BannedCardsPage() {
     <div className="min-h-screen bg-slate-950 text-slate-200">
       <header className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-10">
         <div className="max-w-5xl mx-auto flex items-center gap-4">
-          <Link href="/builder" className="p-2 rounded-full hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
+          <Link href="/" className="p-2 rounded-full hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
             <ArrowLeft size={20} />
           </Link>
           <h1 className="text-xl font-bold flex items-center gap-2 text-red-400">

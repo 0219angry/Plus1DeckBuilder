@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
@@ -602,14 +603,28 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
       {/* Header: 保存ボタンと編集モード表示を追加 */}
       <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0 justify-between">
         <div className="flex items-center gap-4">
-            <h1 className="text-lg font-bold mr-2 text-blue-400 flex items-center gap-2">
-                MtG PLUS1 
-                {deckId && (
-                    <span className="text-[10px] uppercase tracking-wider text-slate-400 border border-slate-700 bg-slate-900 px-2 py-0.5 rounded">
-                        Edit Mode
-                    </span>
-                )}
-            </h1>
+          
+          {/* ロゴとバッジをまとめるコンテナ */}
+          <div className="flex items-center mr-2">
+            <Link 
+              href="/" 
+              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+            >
+              {/* +1 ロゴアイコン */}
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
+                +1
+              </div>
+              {/* タイトルテキスト */}
+              <h1 className="text-lg font-bold text-blue-400">MtG PLUS1</h1>
+            </Link>
+
+            {/* Edit Mode バッジ (リンクの外側に配置) */}
+            {deckId && (
+              <span className="ml-3 text-[10px] uppercase tracking-wider text-slate-400 border border-slate-700 bg-slate-900 px-2 py-0.5 rounded select-none">
+                Edit Mode
+              </span>
+            )}
+          </div>
             <select value={selectedSet} onChange={(e) => setSelectedSet(e.target.value)} className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm max-w-[200px]" disabled={setsLoading}>
               {displayExpansions.map((set) => <option key={set.code} value={set.code}>{language === "ja" ? set.name_ja : set.name_en}</option>)}
             </select>
