@@ -118,6 +118,8 @@ export default function BuilderPage() {
 
           // ★追加: 詳細情報の読み込み
           if (parsed.archetype) setArchetype(parsed.archetype);
+          if (parsed.colors) setColors(parsed.colors);
+          if (parsed.builderName) setBuilderName(parsed.builderName);
           if (parsed.concepts) setConcepts(parsed.concepts);
           
           // 旧データ(文字列)と新データ(配列)の互換性維持
@@ -141,12 +143,14 @@ export default function BuilderPage() {
     if (deck.length > 0 || deckName !== "Untitled Deck") {
       const dataToSave = {
         name: deckName,
+        builderName,
         cards: deck,
         sideboard: sideboard,
         selectedSet: selectedSet,
         language: language,
         keyCardIds: keyCardIds,
         // ★追加: 詳細情報も保存
+        colors,
         archetype,
         concepts,
         turnMoves,
@@ -154,7 +158,7 @@ export default function BuilderPage() {
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, sideboard, deckName, selectedSet, language, keyCardIds, archetype, concepts, turnMoves]); // 依存配列に追加
+  }, [deck, sideboard, deckName,builderName, selectedSet, language, keyCardIds, colors, archetype, concepts, turnMoves]); // 依存配列に追加
 
   const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
