@@ -11,12 +11,13 @@ import SearchPanel from "@/components/SearchPanel";
 import DeckPanel from "@/components/DeckPanel";
 import InfoPanel from "@/components/InfoPanel";
 import Footer from "@/components/Footer";
+import ShareModal from "@/components/ShareModal";
 import AnalysisPanel from "@/components/AnalysisPanel"; 
 import SampleHandPanel from "@/components/SampleHandPanel"; 
 import { useAllowedSets } from "@/hooks/useAllowedSets";
 import { useBannedCards } from "@/hooks/useBannedCards";
 
-import { Search as SearchIcon, BarChart3, Play, Info, CloudUpload, Save } from "lucide-react";
+import { Search as SearchIcon, BarChart3, Play, Info, CloudUpload, Save, Share2 } from "lucide-react";
 
 // Props定義: 編集モード時はこれらの値が渡される
 type BuilderPageProps = {
@@ -63,6 +64,8 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
   const [showArchetype, setShowArchetype] = useState(true);
   const [showConcepts, setShowConcepts] = useState(true);
   const [showTurnMoves, setShowTurnMoves] = useState(true);
+
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
 
   // --- Hooks ---
   const { allowedSets, loading: setsLoading } = useAllowedSets();
@@ -217,6 +220,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
             const result = await updateDeck(deckId, editKey, savePayload);
             if (result.success) {
                 alert("保存しました！");
+                setIsShareModalOpen(true);
             }
         } else {
             // B. 新規作成モード
@@ -616,6 +620,17 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
 
         {/* 保存アクションエリア */}
         <div className="flex items-center gap-2">
+            {/* 共有ボタン (保存済みの場合のみ表示) */}
+            {deckId && (
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 rounded font-bold transition-colors"
+                title="共有リンクを表示"
+              >
+                <Share2 size={18} />
+                <span className="hidden sm:inline">Links</span>
+              </button>
+            )}
             <button 
                 onClick={handleCloudSave} 
                 disabled={isSaving}
@@ -751,6 +766,15 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           </Panel>
         </PanelGroup>
       </div>
+
+      {deckId && (
+        <ShareModal 
+          isOpen={isShareModalOpen} 
+          onClose={() => setIsShareModalOpen(false)} 
+          deckId={deckId} 
+          editKey={editKey} 
+        />
+      )}
       <Footer />
     </main>
   );
