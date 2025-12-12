@@ -3,6 +3,7 @@ import { DeckCard, Card, TurnMove } from "@/types";
 import { List as ListIcon, LayoutGrid, Check, RefreshCw, Download, ChevronDown, Upload, Image as ImageIcon, Loader2, MessageSquare, Crown, Star, Trash2 } from "lucide-react";
 import CardView from "./CardView";
 import ImportModal from "./ImportModal";
+import { getDeckColorName } from "@/lib/mtg";
 
 type Props = {
   deck: DeckCard[];
@@ -26,6 +27,7 @@ type Props = {
 
   // ★追加: 詳細情報と表示設定
   archetype?: string;
+  colors?: string;
   concepts?: string;
   turnMoves?: TurnMove[];
   showArchetype?: boolean;
@@ -62,6 +64,7 @@ export default function DeckPanel({
   bannedCardsMap = {},
   // ★追加
   archetype = "",
+  colors = "", 
   concepts = "",
   turnMoves = [],
   showArchetype = true,

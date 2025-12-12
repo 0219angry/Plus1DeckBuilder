@@ -1,60 +1,7 @@
 import { Info, Plus, Trash2, Check, ChevronDown, Languages, Search } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { TurnMove } from "@/types";
-
-// ------------------------------------------------------------------
-// 定数データ定義
-// ------------------------------------------------------------------
-
-const MTG_COLORS = [
-  { id: 'W', label: '白', class: 'bg-yellow-100 text-yellow-900 border-yellow-200 hover:bg-yellow-200' },
-  { id: 'U', label: '青', class: 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600' },
-  { id: 'B', label: '黒', class: 'bg-slate-800 text-slate-100 border-slate-900 hover:bg-slate-900' },
-  { id: 'R', label: '赤', class: 'bg-red-500 text-white border-red-600 hover:bg-red-600' },
-  { id: 'G', label: '緑', class: 'bg-green-600 text-white border-green-700 hover:bg-green-700' },
-  { id: 'C', label: '無', class: 'bg-slate-400 text-white border-slate-500 hover:bg-slate-500' },
-];
-
-// キーを正しいソート順 (W, U, B, R, G, C) に修正済み
-const COLOR_NAMES: Record<string, { ja: string; en: string }> = {
-  // --- 単色 ---
-  'W': { ja: '白単', en: 'Mono White' },
-  'U': { ja: '青単', en: 'Mono Blue' },
-  'B': { ja: '黒単', en: 'Mono Black' },
-  'R': { ja: '赤単', en: 'Mono Red' },
-  'G': { ja: '緑単', en: 'Mono Green' },
-  'C': { ja: '無色', en: 'Colorless' },
-  // --- 2色 (ギルド) ---
-  'WU': { ja: 'アゾリウス', en: 'Azorius' },
-  'UB': { ja: 'ディミーア', en: 'Dimir' },
-  'BR': { ja: 'ラクドス', en: 'Rakdos' },
-  'RG': { ja: 'グルール', en: 'Gruul' },
-  'WG': { ja: 'セレズニア', en: 'Selesnya' },
-  'WB': { ja: 'オルゾフ', en: 'Orzhov' },
-  'UR': { ja: 'イゼット', en: 'Izzet' },
-  'BG': { ja: 'ゴルガリ', en: 'Golgari' },
-  'WR': { ja: 'ボロス', en: 'Boros' },
-  'UG': { ja: 'シミック', en: 'Simic' },
-  // --- 3色 (断片・氏族) ---
-  'WUG': { ja: 'バント', en: 'Bant' },
-  'WUB': { ja: 'エスパー', en: 'Esper' },
-  'UBR': { ja: 'グリクシス', en: 'Grixis' },
-  'BRG': { ja: 'ジャンド', en: 'Jund' },
-  'WRG': { ja: 'ナヤ', en: 'Naya' },
-  'WBG': { ja: 'アブザン', en: 'Abzan' },
-  'WUR': { ja: 'ジェスカイ', en: 'Jeskai' },
-  'UBG': { ja: 'スゥルタイ', en: 'Sultai' },
-  'WBR': { ja: 'マルドゥ', en: 'Mardu' },
-  'URG': { ja: 'ティムール', en: 'Temur' },
-  // --- 4色 (Sans-X) ---
-  'UBRG': { ja: '白抜き4色', en: 'Whiteless' },
-  'WBRG': { ja: '青抜き4色', en: 'Blueless' },
-  'WURG': { ja: '黒抜き4色', en: 'Blackless' },
-  'WUBG': { ja: '赤抜き4色', en: 'Redless' },
-  'WUBR': { ja: '緑抜き4色', en: 'Greenless' },
-  // --- 5色 ---
-  'WUBRG': { ja: '5色', en: '5-Color' },
-};
+import { MTG_COLORS, getDeckColorName } from "@/lib/mtg";
 
 const ARCHETYPES_DATA = [
   { id: 'aggro', ja: 'アグロ', en: 'Aggro' },
@@ -75,10 +22,6 @@ const ARCHETYPES_DATA = [
   { id: 'enchantments', ja: 'エンチャント', en: 'Enchantments' },
   { id: 'mill', ja: 'ライブラリーアウト', en: 'Mill' },
 ];
-
-// ------------------------------------------------------------------
-// コンポーネント定義
-// ------------------------------------------------------------------
 
 type Props = {
   colors: string[];
@@ -103,14 +46,10 @@ export default function InfoPanel({
 }: Props) {
 
   const [lang, setLang] = useState<'ja' | 'en'>('ja');
-  
-  // ドロップダウン制御用ステート
   const [isArchetypeOpen, setIsArchetypeOpen] = useState(false);
   const archetypeRef = useRef<HTMLDivElement>(null);
-
   const sortOrder = ['W', 'U', 'B', 'R', 'G', 'C'];
 
-  // --- Click Outside Hook ---
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (archetypeRef.current && !archetypeRef.current.contains(event.target as Node)) {
@@ -122,8 +61,6 @@ export default function InfoPanel({
       document.removeEventListener("mousedown", handleClickOutside);
     };
   }, []);
-
-  // --- Functions ---
 
   const addMove = () => {
     const nextTurn = (turnMoves.length + 1).toString();
@@ -149,13 +86,7 @@ export default function InfoPanel({
     setColors(newColors);
   };
 
-  const getColorName = () => {
-    if (colors.length === 0) return null;
-    const key = colors.join('');
-    return COLOR_NAMES[key] ? COLOR_NAMES[key][lang] : key;
-  };
-  
-  const displayColorName = getColorName();
+  const displayColorName = getDeckColorName(colors, lang);
 
   const toggleLanguage = () => {
     const nextLang = lang === 'ja' ? 'en' : 'ja';
@@ -166,31 +97,23 @@ export default function InfoPanel({
     }
   };
 
-  // アーキタイプ選択時の処理
   const handleSelectArchetype = (value: string) => {
     setArchetype(value);
     setIsArchetypeOpen(false);
   };
 
-  // アーキタイプフィルター処理
-  // 入力された文字列が含まれる候補のみを表示（大文字小文字無視）
   const filteredArchetypes = ARCHETYPES_DATA.filter(d => {
     const searchStr = archetype.toLowerCase();
     return d.ja.toLowerCase().includes(searchStr) || d.en.toLowerCase().includes(searchStr);
   });
 
-  // --- Render ---
-
   return (
     <div className="h-full bg-slate-900/50 p-4 overflow-y-auto space-y-8">
-      
-      {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2 text-slate-400">
           <Info size={18} />
           <h2 className="text-sm font-bold">デッキ詳細情報</h2>
         </div>
-        
         <button
           onClick={toggleLanguage}
           className="flex items-center gap-1.5 px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-[10px] text-slate-300 transition-colors border border-slate-700"
@@ -201,7 +124,6 @@ export default function InfoPanel({
         </button>
       </div>
 
-      {/* 1. Color & Archetype Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-slate-300">カラー & アーキタイプ</label>
@@ -217,8 +139,6 @@ export default function InfoPanel({
         </div>
 
         <div className={`space-y-4 transition-opacity ${!showArchetype ? "opacity-40 pointer-events-none" : ""}`}>
-          
-          {/* Color Picker */}
           <div className="space-y-2">
             <div className="flex gap-2">
               {MTG_COLORS.map((color) => {
@@ -240,8 +160,6 @@ export default function InfoPanel({
                 );
               })}
             </div>
-
-            {/* Color Badge */}
             {displayColorName && (
               <div className="text-xs font-medium text-blue-300 bg-blue-900/30 border border-blue-800/50 rounded px-2 py-1 inline-flex items-center gap-2 animate-in fade-in slide-in-from-left-1">
                  <span>{displayColorName}</span>
@@ -249,7 +167,6 @@ export default function InfoPanel({
             )}
           </div>
 
-          {/* ★改善: Custom Archetype Combobox */}
           <div className="relative" ref={archetypeRef}>
             <div className="relative group">
               <input
@@ -263,10 +180,7 @@ export default function InfoPanel({
                 placeholder={lang === 'ja' ? "戦略名を選択 または 入力..." : "Select or type strategy..."}
                 className="w-full bg-slate-800 border border-slate-700 rounded p-2 pl-9 text-sm text-white focus:border-blue-500 outline-none placeholder:text-slate-600 transition-colors"
               />
-              {/* アイコン装飾 */}
               <Search className="absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" size={14} />
-              
-              {/* トグルボタン */}
               <button 
                 onClick={() => setIsArchetypeOpen(!isArchetypeOpen)}
                 className="absolute right-1 top-1 p-1.5 text-slate-500 hover:text-white rounded hover:bg-slate-700 transition-colors"
@@ -274,8 +188,6 @@ export default function InfoPanel({
                 <ChevronDown size={14} className={`transition-transform duration-200 ${isArchetypeOpen ? 'rotate-180' : ''}`} />
               </button>
             </div>
-            
-            {/* Custom Dropdown Menu */}
             {isArchetypeOpen && (
               <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-xl max-h-60 overflow-y-auto overflow-x-hidden">
                 {filteredArchetypes.length > 0 ? (
@@ -287,7 +199,6 @@ export default function InfoPanel({
                         className="px-3 py-2 cursor-pointer hover:bg-blue-600 hover:text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2 group transition-colors"
                       >
                         <span className="text-sm font-medium">{d[lang]}</span>
-                        {/* サブ言語を表示 (日本語モードなら英語名、英語モードなら日本語名) */}
                         <span className="text-[10px] text-slate-500 group-hover:text-blue-200">
                           {lang === 'ja' ? d.en : d.ja}
                         </span>
@@ -295,7 +206,6 @@ export default function InfoPanel({
                     ))}
                   </ul>
                 ) : (
-                  // 候補がない場合
                   <div className="px-3 py-4 text-center text-xs text-slate-500">
                     <p>候補が見つかりません</p>
                     <p className="text-[10px] opacity-70 mt-1">"{archetype}" がそのまま使用されます</p>
@@ -305,7 +215,6 @@ export default function InfoPanel({
             )}
           </div>
           
-          {/* Preview */}
           <div className="text-[10px] text-slate-500 flex gap-1 items-center bg-slate-900/50 p-2 rounded border border-slate-800/50">
              <span>Preview:</span>
              <span className="text-slate-300 font-bold break-all">
@@ -315,7 +224,6 @@ export default function InfoPanel({
         </div>
       </div>
 
-      {/* 2. Concepts Section */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-slate-300">構築コンセプト / キーポイント</label>
@@ -338,7 +246,6 @@ export default function InfoPanel({
         />
       </div>
 
-      {/* 3. Timeline Section */}
       <div className="space-y-3">
         <div className="flex justify-between items-end">
           <label className="text-xs font-bold text-slate-300">ゲームプラン (Game Plan)</label>
@@ -352,12 +259,10 @@ export default function InfoPanel({
             画像に含める
           </label>
         </div>
-        
         <div className={`relative pl-4 border-l-2 border-slate-700 space-y-6 transition-opacity ${!showTurnMoves ? "opacity-40 pointer-events-none" : ""}`}>
           {turnMoves.map((move) => (
             <div key={move.id} className="relative group">
               <div className="absolute -left-[21px] top-3 w-3 h-3 rounded-full bg-blue-500 border-2 border-slate-900 shadow-[0_0_0_2px_#334155]"></div>
-              
               <div className="flex gap-2 items-start">
                 <div className="w-12 shrink-0">
                   <input
@@ -368,7 +273,6 @@ export default function InfoPanel({
                     placeholder="T"
                   />
                 </div>
-
                 <div className="flex-1">
                   <textarea
                     value={move.action}
@@ -377,7 +281,6 @@ export default function InfoPanel({
                     className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-xs text-white focus:border-blue-500 outline-none resize-none min-h-[60px]"
                   />
                 </div>
-
                 <button 
                   onClick={() => removeMove(move.id)}
                   className="p-1.5 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -387,7 +290,6 @@ export default function InfoPanel({
               </div>
             </div>
           ))}
-
           <div className="relative pt-2">
             <div className="absolute -left-[20px] top-4 w-2 h-2 rounded-full bg-slate-700"></div>
             <button
@@ -399,7 +301,6 @@ export default function InfoPanel({
           </div>
         </div>
       </div>
-
       <div className="text-[10px] text-slate-500 pt-4 border-t border-slate-800">
         ※ チェックを入れた項目のみ、画像保存時にサイドボードの下に出力されます。
       </div>
