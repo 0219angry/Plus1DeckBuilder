@@ -1,12 +1,11 @@
-import { Info, Plus, Trash2, Check, ChevronDown, Languages } from "lucide-react";
-import { useState } from "react";
+import { Info, Plus, Trash2, Check, ChevronDown, Languages, Search } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { TurnMove } from "@/types";
 
 // ------------------------------------------------------------------
 // 定数データ定義
 // ------------------------------------------------------------------
 
-// 1. カラー定義
 const MTG_COLORS = [
   { id: 'W', label: '白', class: 'bg-yellow-100 text-yellow-900 border-yellow-200 hover:bg-yellow-200' },
   { id: 'U', label: '青', class: 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600' },
@@ -16,48 +15,47 @@ const MTG_COLORS = [
   { id: 'C', label: '無', class: 'bg-slate-400 text-white border-slate-500 hover:bg-slate-500' },
 ];
 
-// 2. カラーの組み合わせ名称 (キーはWUBRGC順にソート済みであること)
+// キーを正しいソート順 (W, U, B, R, G, C) に修正済み
 const COLOR_NAMES: Record<string, { ja: string; en: string }> = {
-  // 単色
+  // --- 単色 ---
   'W': { ja: '白単', en: 'Mono White' },
   'U': { ja: '青単', en: 'Mono Blue' },
   'B': { ja: '黒単', en: 'Mono Black' },
   'R': { ja: '赤単', en: 'Mono Red' },
   'G': { ja: '緑単', en: 'Mono Green' },
   'C': { ja: '無色', en: 'Colorless' },
-  // 2色 (ギルド)
+  // --- 2色 (ギルド) ---
   'WU': { ja: 'アゾリウス', en: 'Azorius' },
   'UB': { ja: 'ディミーア', en: 'Dimir' },
   'BR': { ja: 'ラクドス', en: 'Rakdos' },
   'RG': { ja: 'グルール', en: 'Gruul' },
-  'GW': { ja: 'セレズニア', en: 'Selesnya' },
+  'WG': { ja: 'セレズニア', en: 'Selesnya' },
   'WB': { ja: 'オルゾフ', en: 'Orzhov' },
   'UR': { ja: 'イゼット', en: 'Izzet' },
   'BG': { ja: 'ゴルガリ', en: 'Golgari' },
-  'RW': { ja: 'ボロス', en: 'Boros' },
-  'GU': { ja: 'シミック', en: 'Simic' },
-  // 3色 (断片・氏族)
-  'GWU': { ja: 'バント', en: 'Bant' },
+  'WR': { ja: 'ボロス', en: 'Boros' },
+  'UG': { ja: 'シミック', en: 'Simic' },
+  // --- 3色 (断片・氏族) ---
+  'WUG': { ja: 'バント', en: 'Bant' },
   'WUB': { ja: 'エスパー', en: 'Esper' },
   'UBR': { ja: 'グリクシス', en: 'Grixis' },
   'BRG': { ja: 'ジャンド', en: 'Jund' },
-  'RGW': { ja: 'ナヤ', en: 'Naya' },
+  'WRG': { ja: 'ナヤ', en: 'Naya' },
   'WBG': { ja: 'アブザン', en: 'Abzan' },
   'WUR': { ja: 'ジェスカイ', en: 'Jeskai' },
   'UBG': { ja: 'スゥルタイ', en: 'Sultai' },
   'WBR': { ja: 'マルドゥ', en: 'Mardu' },
   'URG': { ja: 'ティムール', en: 'Temur' },
-  // 4色 (Sans-X)
+  // --- 4色 (Sans-X) ---
   'UBRG': { ja: '白抜き4色', en: 'Whiteless' },
-  'BRGW': { ja: '青抜き4色', en: 'Blueless' },
-  'RGWU': { ja: '黒抜き4色', en: 'Blackless' },
-  'GWUB': { ja: '赤抜き4色', en: 'Redless' },
+  'WBRG': { ja: '青抜き4色', en: 'Blueless' },
+  'WURG': { ja: '黒抜き4色', en: 'Blackless' },
+  'WUBG': { ja: '赤抜き4色', en: 'Redless' },
   'WUBR': { ja: '緑抜き4色', en: 'Greenless' },
-  // 5色
+  // --- 5色 ---
   'WUBRG': { ja: '5色', en: '5-Color' },
 };
 
-// 3. アーキタイプ定型文リスト
 const ARCHETYPES_DATA = [
   { id: 'aggro', ja: 'アグロ', en: 'Aggro' },
   { id: 'control', ja: 'コントロール', en: 'Control' },
@@ -73,6 +71,9 @@ const ARCHETYPES_DATA = [
   { id: 'burn', ja: 'バーン', en: 'Burn' },
   { id: 'prowess', ja: '果敢', en: 'Prowess' },
   { id: 'sacrifice', ja: 'サクリファイス', en: 'Sacrifice' },
+  { id: 'artifacts', ja: 'アーティファクト', en: 'Artifacts' },
+  { id: 'enchantments', ja: 'エンチャント', en: 'Enchantments' },
+  { id: 'mill', ja: 'ライブラリーアウト', en: 'Mill' },
 ];
 
 // ------------------------------------------------------------------
@@ -80,19 +81,12 @@ const ARCHETYPES_DATA = [
 // ------------------------------------------------------------------
 
 type Props = {
-  // 色情報
   colors: string[];
   setColors: (v: string[]) => void;
-
-  // テキスト情報
   archetype: string; setArchetype: (v: string) => void;
   concepts: string; setConcepts: (v: string) => void;
-  
-  // タイムライン情報
   turnMoves: TurnMove[]; 
   setTurnMoves: (v: TurnMove[]) => void;
-  
-  // 表示設定
   showArchetype: boolean; setShowArchetype: (v: boolean) => void;
   showConcepts: boolean; setShowConcepts: (v: boolean) => void;
   showTurnMoves: boolean; setShowTurnMoves: (v: boolean) => void;
@@ -108,13 +102,28 @@ export default function InfoPanel({
   showTurnMoves, setShowTurnMoves
 }: Props) {
 
-  // 言語設定ステート (ja | en)
   const [lang, setLang] = useState<'ja' | 'en'>('ja');
+  
+  // ドロップダウン制御用ステート
+  const [isArchetypeOpen, setIsArchetypeOpen] = useState(false);
+  const archetypeRef = useRef<HTMLDivElement>(null);
 
-  // 色ソート順定義
   const sortOrder = ['W', 'U', 'B', 'R', 'G', 'C'];
 
-  // --- ヘルパー関数 ---
+  // --- Click Outside Hook ---
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (archetypeRef.current && !archetypeRef.current.contains(event.target as Node)) {
+        setIsArchetypeOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  // --- Functions ---
 
   const addMove = () => {
     const nextTurn = (turnMoves.length + 1).toString();
@@ -129,7 +138,6 @@ export default function InfoPanel({
     setTurnMoves(turnMoves.map(m => m.id === id ? { ...m, [field]: value } : m));
   };
 
-  // 色トグル & 自動ソート
   const toggleColor = (colorId: string) => {
     let newColors: string[];
     if (colors.includes(colorId)) {
@@ -137,39 +145,46 @@ export default function InfoPanel({
     } else {
       newColors = [...colors, colorId];
     }
-    // WUBRGC順にソート
     newColors.sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
     setColors(newColors);
   };
 
-  // 現在のカラー名を取得 (言語設定反映)
   const getColorName = () => {
     if (colors.length === 0) return null;
     const key = colors.join('');
-    // 辞書にあればその言語、なければキーそのものを返す
     return COLOR_NAMES[key] ? COLOR_NAMES[key][lang] : key;
   };
   
   const displayColorName = getColorName();
 
-  // 言語切り替え & アーキタイプ自動翻訳
   const toggleLanguage = () => {
     const nextLang = lang === 'ja' ? 'en' : 'ja';
     setLang(nextLang);
-
-    // 入力中のアーキタイプが定型文リストにある場合、言語に合わせて置換する
     const currentEntry = ARCHETYPES_DATA.find(d => d.ja === archetype || d.en === archetype);
     if (currentEntry) {
       setArchetype(currentEntry[nextLang]);
     }
   };
 
-  // --- レンダリング ---
+  // アーキタイプ選択時の処理
+  const handleSelectArchetype = (value: string) => {
+    setArchetype(value);
+    setIsArchetypeOpen(false);
+  };
+
+  // アーキタイプフィルター処理
+  // 入力された文字列が含まれる候補のみを表示（大文字小文字無視）
+  const filteredArchetypes = ARCHETYPES_DATA.filter(d => {
+    const searchStr = archetype.toLowerCase();
+    return d.ja.toLowerCase().includes(searchStr) || d.en.toLowerCase().includes(searchStr);
+  });
+
+  // --- Render ---
 
   return (
     <div className="h-full bg-slate-900/50 p-4 overflow-y-auto space-y-8">
       
-      {/* ヘッダー & 言語切り替え */}
+      {/* Header */}
       <div className="flex items-center justify-between border-b border-slate-800 pb-2">
         <div className="flex items-center gap-2 text-slate-400">
           <Info size={18} />
@@ -186,7 +201,7 @@ export default function InfoPanel({
         </button>
       </div>
 
-      {/* 1. カラー & アーキタイプ */}
+      {/* 1. Color & Archetype Section */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-slate-300">カラー & アーキタイプ</label>
@@ -203,7 +218,7 @@ export default function InfoPanel({
 
         <div className={`space-y-4 transition-opacity ${!showArchetype ? "opacity-40 pointer-events-none" : ""}`}>
           
-          {/* カラーピッカー */}
+          {/* Color Picker */}
           <div className="space-y-2">
             <div className="flex gap-2">
               {MTG_COLORS.map((color) => {
@@ -226,45 +241,81 @@ export default function InfoPanel({
               })}
             </div>
 
-            {/* カラー名バッジ */}
+            {/* Color Badge */}
             {displayColorName && (
-              <div className="text-xs font-medium text-blue-300 bg-blue-900/30 border border-blue-800/50 rounded px-2 py-1 inline-flex items-center gap-2">
+              <div className="text-xs font-medium text-blue-300 bg-blue-900/30 border border-blue-800/50 rounded px-2 py-1 inline-flex items-center gap-2 animate-in fade-in slide-in-from-left-1">
                  <span>{displayColorName}</span>
               </div>
             )}
           </div>
 
-          {/* アーキタイプ入力 (datalist) */}
-          <div className="relative group">
-            <input
-              type="text"
-              list="archetype-list"
-              value={archetype}
-              onChange={(e) => setArchetype(e.target.value)}
-              placeholder={lang === 'ja' ? "戦略名を選択 または 入力..." : "Select or type strategy..."}
-              className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white focus:border-blue-500 outline-none placeholder:text-slate-600 pr-8"
-            />
-            <ChevronDown className="absolute right-2 top-2.5 text-slate-500 pointer-events-none" size={16} />
+          {/* ★改善: Custom Archetype Combobox */}
+          <div className="relative" ref={archetypeRef}>
+            <div className="relative group">
+              <input
+                type="text"
+                value={archetype}
+                onChange={(e) => {
+                  setArchetype(e.target.value);
+                  setIsArchetypeOpen(true);
+                }}
+                onFocus={() => setIsArchetypeOpen(true)}
+                placeholder={lang === 'ja' ? "戦略名を選択 または 入力..." : "Select or type strategy..."}
+                className="w-full bg-slate-800 border border-slate-700 rounded p-2 pl-9 text-sm text-white focus:border-blue-500 outline-none placeholder:text-slate-600 transition-colors"
+              />
+              {/* アイコン装飾 */}
+              <Search className="absolute left-2.5 top-2.5 text-slate-500 pointer-events-none" size={14} />
+              
+              {/* トグルボタン */}
+              <button 
+                onClick={() => setIsArchetypeOpen(!isArchetypeOpen)}
+                className="absolute right-1 top-1 p-1.5 text-slate-500 hover:text-white rounded hover:bg-slate-700 transition-colors"
+              >
+                <ChevronDown size={14} className={`transition-transform duration-200 ${isArchetypeOpen ? 'rotate-180' : ''}`} />
+              </button>
+            </div>
             
-            {/* 言語に応じた候補リスト */}
-            <datalist id="archetype-list">
-              {ARCHETYPES_DATA.map((d) => (
-                <option key={d.id} value={d[lang]} />
-              ))}
-            </datalist>
+            {/* Custom Dropdown Menu */}
+            {isArchetypeOpen && (
+              <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-700 rounded-md shadow-xl max-h-60 overflow-y-auto overflow-x-hidden">
+                {filteredArchetypes.length > 0 ? (
+                  <ul className="py-1">
+                    {filteredArchetypes.map((d) => (
+                      <li 
+                        key={d.id}
+                        onClick={() => handleSelectArchetype(d[lang])}
+                        className="px-3 py-2 cursor-pointer hover:bg-blue-600 hover:text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 sm:gap-2 group transition-colors"
+                      >
+                        <span className="text-sm font-medium">{d[lang]}</span>
+                        {/* サブ言語を表示 (日本語モードなら英語名、英語モードなら日本語名) */}
+                        <span className="text-[10px] text-slate-500 group-hover:text-blue-200">
+                          {lang === 'ja' ? d.en : d.ja}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  // 候補がない場合
+                  <div className="px-3 py-4 text-center text-xs text-slate-500">
+                    <p>候補が見つかりません</p>
+                    <p className="text-[10px] opacity-70 mt-1">"{archetype}" がそのまま使用されます</p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           
-          {/* プレビュー */}
-          <div className="text-[10px] text-slate-500 flex gap-1 items-center">
+          {/* Preview */}
+          <div className="text-[10px] text-slate-500 flex gap-1 items-center bg-slate-900/50 p-2 rounded border border-slate-800/50">
              <span>Preview:</span>
-             <span className="text-slate-300 font-bold">
+             <span className="text-slate-300 font-bold break-all">
                {displayColorName} {archetype}
              </span>
           </div>
         </div>
       </div>
 
-      {/* 2. コンセプト */}
+      {/* 2. Concepts Section */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="text-xs font-bold text-slate-300">構築コンセプト / キーポイント</label>
@@ -287,7 +338,7 @@ export default function InfoPanel({
         />
       </div>
 
-      {/* 3. タイムライン */}
+      {/* 3. Timeline Section */}
       <div className="space-y-3">
         <div className="flex justify-between items-end">
           <label className="text-xs font-bold text-slate-300">ゲームプラン (Game Plan)</label>
@@ -305,11 +356,9 @@ export default function InfoPanel({
         <div className={`relative pl-4 border-l-2 border-slate-700 space-y-6 transition-opacity ${!showTurnMoves ? "opacity-40 pointer-events-none" : ""}`}>
           {turnMoves.map((move) => (
             <div key={move.id} className="relative group">
-              {/* ドット装飾 */}
               <div className="absolute -left-[21px] top-3 w-3 h-3 rounded-full bg-blue-500 border-2 border-slate-900 shadow-[0_0_0_2px_#334155]"></div>
               
               <div className="flex gap-2 items-start">
-                {/* ターン数 */}
                 <div className="w-12 shrink-0">
                   <input
                     type="text"
@@ -320,7 +369,6 @@ export default function InfoPanel({
                   />
                 </div>
 
-                {/* アクション内容 */}
                 <div className="flex-1">
                   <textarea
                     value={move.action}
@@ -330,7 +378,6 @@ export default function InfoPanel({
                   />
                 </div>
 
-                {/* 削除ボタン */}
                 <button 
                   onClick={() => removeMove(move.id)}
                   className="p-1.5 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -341,7 +388,6 @@ export default function InfoPanel({
             </div>
           ))}
 
-          {/* 追加ボタン */}
           <div className="relative pt-2">
             <div className="absolute -left-[20px] top-4 w-2 h-2 rounded-full bg-slate-700"></div>
             <button
@@ -354,7 +400,7 @@ export default function InfoPanel({
         </div>
       </div>
 
-      <div className="text-[12px] text-slate-500 pt-4 border-t border-slate-800">
+      <div className="text-[10px] text-slate-500 pt-4 border-t border-slate-800">
         ※ チェックを入れた項目のみ、画像保存時にサイドボードの下に出力されます。
       </div>
     </div>
