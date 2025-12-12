@@ -3,14 +3,20 @@
 import { db } from '@/lib/firebaseAdmin' // 前回の設定を利用
 import { v4 as uuidv4 } from 'uuid'
 import { DeckData, DeckResponse } from '@/types/deck'
+import { minifyDeckCards } from '@/lib/utils'
 
 // ■ 新規保存 (Create)
 export async function createDeck(data: DeckData) {
   const editSecret = uuidv4() // 編集用パスワード生成
 
+  const minifiedCards = minifyDeckCards(data.cards);
+  const minifiedSideboard = minifyDeckCards(data.sideboard);
+
   // Firestoreに保存するオブジェクト
   const firestoreData = {
     ...data, // LocalStorageの中身を全て展開
+    cards: minifiedCards,
+    sideboard: minifiedSideboard,
     editSecret, // 閲覧者には見せない重要データ
     createdAt: new Date().toISOString(),
   }
@@ -79,8 +85,13 @@ export async function updateDeck(id: string, secretKey: string, data: DeckData) 
     throw new Error('Unauthorized: Invalid edit key')
   }
 
+  const minifiedCards = minifyDeckCards(data.cards);
+  const minifiedSideboard = minifyDeckCards(data.sideboard);
+
   const updatePayload = {
     ...data,
+    cards: minifiedCards,
+    sideboard: minifiedSideboard,
     updatedAt: new Date().toISOString(),
   }
   
