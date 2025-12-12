@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { DeckCard, Card } from "@/types";
+import { DeckCard, Card, TurnMove } from "@/types";
 import { List as ListIcon, LayoutGrid, Check, RefreshCw, Download, ChevronDown, Upload, Image as ImageIcon, Loader2, MessageSquare, Crown, Star, Trash2 } from "lucide-react";
 import CardView from "./CardView";
 import ImportModal from "./ImportModal";
@@ -23,43 +23,22 @@ type Props = {
   onToggleKeyCard?: (id: string) => void;
   onResetDeck: () => void;
   bannedCardsMap?: Record<string, string[]>;
+
+  // ★追加: 詳細情報と表示設定
+  archetype?: string;
+  concepts?: string;
+  turnMoves?: TurnMove[];
+  showArchetype?: boolean;
+  showConcepts?: boolean;
+  showTurnMoves?: boolean;
 };
 
-// 基本土地関連
+// ... (定数定義: BASIC_LAND_NAMES_EN, ALL_BASIC_LAND_NAMES, BASIC_LAND_TRANSLATION, CATEGORY_PRIORITY, sleep は変更なし)
 const BASIC_LAND_NAMES_EN = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
-
-// ★追加: 冠雪土地の英語名リスト
-const SNOW_BASIC_LAND_NAMES_EN = [
-  "Snow-Covered Plains", 
-  "Snow-Covered Island", 
-  "Snow-Covered Swamp", 
-  "Snow-Covered Mountain", 
-  "Snow-Covered Forest"
-];
-
-// ★修正: 冠雪土地も含めるように統合
-const ALL_BASIC_LAND_NAMES = [
-  ...BASIC_LAND_NAMES_EN,
-  ...SNOW_BASIC_LAND_NAMES_EN,
-  "平地", "島", "沼", "山", "森", "荒地",
-  "冠雪の平地", "冠雪の島", "冠雪の沼", "冠雪の山", "冠雪の森"
-];
-
-const BASIC_LAND_TRANSLATION: Record<string, string> = {
-  "Plains": "平地", "Island": "島", "Swamp": "沼", "Mountain": "山", "Forest": "森", "Wastes": "荒地",
-  // 必要であれば冠雪土地の翻訳も追加できますが、バリデーションにはALL_BASIC_LAND_NAMESだけで十分です
-  "Snow-Covered Plains": "冠雪の平地",
-  "Snow-Covered Island": "冠雪の島",
-  "Snow-Covered Swamp": "冠雪の沼",
-  "Snow-Covered Mountain": "冠雪の山",
-  "Snow-Covered Forest": "冠雪の森"
-};
-
-const CATEGORY_PRIORITY: Record<string, number> = {
-  "Creature": 1, "Planeswalker": 2, "Battle": 3, "Instant": 4, 
-  "Sorcery": 5, "Artifact": 6, "Enchantment": 7, "Land": 8, "Other": 9,
-};
-
+const SNOW_BASIC_LAND_NAMES_EN = ["Snow-Covered Plains", "Snow-Covered Island", "Snow-Covered Swamp", "Snow-Covered Mountain", "Snow-Covered Forest"];
+const ALL_BASIC_LAND_NAMES = [...BASIC_LAND_NAMES_EN, ...SNOW_BASIC_LAND_NAMES_EN, "平地", "島", "沼", "山", "森", "荒地", "冠雪の平地", "冠雪の島", "冠雪の沼", "冠雪の山", "冠雪の森"];
+const BASIC_LAND_TRANSLATION: Record<string, string> = { "Plains": "平地", "Island": "島", "Swamp": "沼", "Mountain": "山", "Forest": "森", "Wastes": "荒地", "Snow-Covered Plains": "冠雪の平地", "Snow-Covered Island": "冠雪の島", "Snow-Covered Swamp": "冠雪の沼", "Snow-Covered Mountain": "冠雪の山", "Snow-Covered Forest": "冠雪の森" };
+const CATEGORY_PRIORITY: Record<string, number> = { "Creature": 1, "Planeswalker": 2, "Battle": 3, "Instant": 4, "Sorcery": 5, "Artifact": 6, "Enchantment": 7, "Land": 8, "Other": 9 };
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function DeckPanel({ 
@@ -81,6 +60,13 @@ export default function DeckPanel({
   onToggleKeyCard,
   onResetDeck,
   bannedCardsMap = {},
+  // ★追加
+  archetype = "",
+  concepts = "",
+  turnMoves = [],
+  showArchetype = true,
+  showConcepts = true,
+  showTurnMoves = true,
 }: Props) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [activeTab, setActiveTab] = useState<"main" | "side">("main");
@@ -93,42 +79,27 @@ export default function DeckPanel({
   const mainCount = deck.reduce((acc, c) => acc + c.quantity, 0);
   const sideCount = sideboard.reduce((acc, c) => acc + c.quantity, 0);
 
-  // --- バリデーション ---
+  // ... (validationErrors, processCards, handleExport は変更なし) ...
   const { validationErrors } = useMemo(() => {
     const errors: Record<string, string> = {};
     const allowedSets = new Set([selectedSet.toLowerCase(), ...(additionalLegalSets || []).map(s => s.toLowerCase())]);
-
     const allBannedNames = new Set<string>();
-    Object.values(bannedCardsMap).forEach(list => {
-      list.forEach(name => allBannedNames.add(name));
-    });
-
+    Object.values(bannedCardsMap).forEach(list => list.forEach(name => allBannedNames.add(name)));
     const checkCard = (card: DeckCard) => {
       const cardSet = card.set.toLowerCase();
-      
-      if (!allowedSets.has(cardSet)) {
-        errors[card.id] = `Invalid Set: ${card.set.toUpperCase()}`;
-      }
-
+      if (!allowedSets.has(cardSet)) errors[card.id] = `Invalid Set: ${card.set.toUpperCase()}`;
       if (allBannedNames.has(card.name)) {
-        // どのセット由来で禁止されたか特定するのは難しいため、汎用メッセージにするか
-        // ユーザーに「禁止指定カード」であることを伝える
         const msg = `BANNED CARD (Global Ban)`;
         errors[card.id] = errors[card.id] ? `${errors[card.id]} / ${msg}` : msg;
       }
-
       const isBasic = ALL_BASIC_LAND_NAMES.includes(card.name) || ALL_BASIC_LAND_NAMES.includes(card.printed_name || "");
-      if (!isBasic && card.quantity > 4) {
-        errors[card.id] = errors[card.id] ? `${errors[card.id]} / Max 4 copies` : "Max 4 copies";
-      }
+      if (!isBasic && card.quantity > 4) errors[card.id] = errors[card.id] ? `${errors[card.id]} / Max 4 copies` : "Max 4 copies";
     };
-
     (deck || []).forEach(checkCard);
     (sideboard || []).forEach(checkCard);
     return { validationErrors: errors };
   }, [deck, sideboard, selectedSet, additionalLegalSets, bannedCardsMap]);
 
-  // --- 表示用データ処理 ---
   const processCards = (cards: DeckCard[]) => {
     const groups: Record<string, DeckCard[]> = {};
     cards.forEach(card => {
@@ -142,7 +113,6 @@ export default function DeckPanel({
       else if (t.includes("Artifact")) category = "Artifact";
       else if (t.includes("Enchantment")) category = "Enchantment";
       else if (t.includes("Land")) category = "Land";
-
       if (!groups[category]) groups[category] = [];
       let cardToDisplay = card;
       if (BASIC_LAND_NAMES_EN.includes(card.name)) {
@@ -156,7 +126,6 @@ export default function DeckPanel({
       }
       groups[category].push(cardToDisplay);
     });
-
     Object.keys(groups).forEach(key => {
       groups[key].sort((a, b) => {
         const cmcA = a.cmc ?? 0;
@@ -167,19 +136,11 @@ export default function DeckPanel({
         return nameA.localeCompare(nameB);
       });
     });
-
-    const sortedCategories = Object.keys(groups).sort((a, b) => 
-      (CATEGORY_PRIORITY[a] || 99) - (CATEGORY_PRIORITY[b] || 99)
-    );
-
-    return sortedCategories.map(cat => ({
-      name: cat, cards: groups[cat], count: groups[cat].reduce((sum, c) => sum + c.quantity, 0)
-    }));
+    const sortedCategories = Object.keys(groups).sort((a, b) => (CATEGORY_PRIORITY[a] || 99) - (CATEGORY_PRIORITY[b] || 99));
+    return sortedCategories.map(cat => ({ name: cat, cards: groups[cat], count: groups[cat].reduce((sum, c) => sum + c.quantity, 0) }));
   };
-
   const currentProcessedData = activeTab === "main" ? processCards(deck) : processCards(sideboard);
 
-  // --- エクスポート ---
   const handleExport = (format: "arena" | "mo" | "jp") => {
     const formatCard = (c: DeckCard) => {
       switch (format) {
@@ -204,36 +165,26 @@ export default function DeckPanel({
     setIsGeneratingImage(true);
 
     try {
-      // 1. 統計情報の計算
+      // 1. 統計情報の計算 (既存コード)
       const landCards = deck.filter(c => c.type_line.includes("Land"));
       const nonLandCards = deck.filter(c => !c.type_line.includes("Land"));
-      
       const totalCmc = nonLandCards.reduce((sum, c) => sum + (c.cmc || 0) * c.quantity, 0);
       const totalNonLandCount = nonLandCards.reduce((sum, c) => sum + c.quantity, 0);
       const avgCmc = totalNonLandCount > 0 ? (totalCmc / totalNonLandCount).toFixed(2) : "0.00";
-
       const rarityCount = { mythic: 0, rare: 0, uncommon: 0, common: 0 };
       deck.forEach(c => {
         const r = c.rarity?.toLowerCase() || 'common';
         if (r in rarityCount) rarityCount[r as keyof typeof rarityCount] += c.quantity;
       });
-
       const manaCount = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
       deck.forEach(c => {
         if (c.mana_cost) {
-          const w = (c.mana_cost.match(/{W}/g) || []).length;
-          const u = (c.mana_cost.match(/{U}/g) || []).length;
-          const b = (c.mana_cost.match(/{B}/g) || []).length;
-          const r = (c.mana_cost.match(/{R}/g) || []).length;
-          const g = (c.mana_cost.match(/{G}/g) || []).length;
-          const colorless = (c.mana_cost.match(/{C}/g) || []).length;
-          
-          manaCount.W += w * c.quantity;
-          manaCount.U += u * c.quantity;
-          manaCount.B += b * c.quantity;
-          manaCount.R += r * c.quantity;
-          manaCount.G += g * c.quantity;
-          manaCount.C += colorless * c.quantity;
+          manaCount.W += (c.mana_cost.match(/{W}/g) || []).length * c.quantity;
+          manaCount.U += (c.mana_cost.match(/{U}/g) || []).length * c.quantity;
+          manaCount.B += (c.mana_cost.match(/{B}/g) || []).length * c.quantity;
+          manaCount.R += (c.mana_cost.match(/{R}/g) || []).length * c.quantity;
+          manaCount.G += (c.mana_cost.match(/{G}/g) || []).length * c.quantity;
+          manaCount.C += (c.mana_cost.match(/{C}/g) || []).length * c.quantity;
         }
       });
 
@@ -245,15 +196,8 @@ export default function DeckPanel({
         if (ra !== rb) return rb - ra;
         return (b.cmc || 0) - (a.cmc || 0);
       };
-
-      const candidates = keyCardIds.length > 0
-        ? [...deck, ...sideboard].filter(c => keyCardIds.includes(c.id))
-        : [...deck];
-      
-      if (candidates.length > 0) {
-        bgKeyCard = candidates.sort(artSortFn)[0];
-      }
-
+      const candidates = keyCardIds.length > 0 ? [...deck, ...sideboard].filter(c => keyCardIds.includes(c.id)) : [...deck];
+      if (candidates.length > 0) bgKeyCard = candidates.sort(artSortFn)[0];
       const keyArtUrl = bgKeyCard?.image_uris?.art_crop || bgKeyCard?.card_faces?.[0]?.image_uris?.art_crop;
 
       // 2. カラム分け & ソート
@@ -265,7 +209,6 @@ export default function DeckPanel({
         columns[idx].push(card);
       };
       deck.forEach(addToColumn);
-      
       const typeScore = (c: DeckCard) => {
          const t = c.card_faces?.[0]?.type_line ?? c.type_line;
          if (t.includes("Creature")) return 1;
@@ -276,7 +219,6 @@ export default function DeckPanel({
         const tsA = typeScore(a), tsB = typeScore(b);
         return tsA !== tsB ? tsA - tsB : a.name.localeCompare(b.name);
       }));
-      
       const sortedSideboard = [...sideboard].sort((a, b) => a.name.localeCompare(b.name));
 
       // 3. Canvas描画設定
@@ -288,7 +230,9 @@ export default function DeckPanel({
       const STACK_OFFSET = 60;
       const SIDEBOARD_OFFSET = 60;
       const FOOTER_HEIGHT = 60;
+      const INFO_AREA_GAP = 60; // サイドボードと詳細情報の間の余白
 
+      // 高さ計算
       const getColumnHeight = (cards: DeckCard[]) => cards.length === 0 ? 0 : CARD_HEIGHT + (Math.max(0, cards.length - 1) * STACK_OFFSET);
       const colHeights = columns.map(getColumnHeight);
       const maxMainHeight = Math.max(...colHeights, 100);
@@ -296,14 +240,81 @@ export default function DeckPanel({
       const sideRows = Math.ceil(sortedSideboard.length / 7);
       const sideHeight = sortedSideboard.length > 0 ? CARD_HEIGHT + (sideRows > 1 ? (sideRows - 1) * (CARD_HEIGHT + 10) : 0) + SIDEBOARD_OFFSET + 40 : 0;
 
+      // ★追加: Infoエリアの高さ計算
       const canvasWidth = (CARD_WIDTH * 7) + (COL_GAP * 8);
-      const canvasHeight = HEADER_HEIGHT + COL_HEADER_HEIGHT + maxMainHeight + sideHeight + FOOTER_HEIGHT;
-
+      const textWidth = canvasWidth - (40 * 2); // PADDING_X = 40
+      
+      // キャンバス作成 (計測用)
       const canvas = document.createElement("canvas");
-      canvas.width = canvasWidth;
-      canvas.height = canvasHeight;
       const ctx = canvas.getContext("2d");
       if (!ctx) throw new Error("Canvas context failed");
+
+      // テキスト折り返しヘルパー
+      const wrapText = (text: string, maxWidth: number, fontSize = "20px", isBold = false) => {
+        const lines: string[] = [];
+        const paragraphs = text.split('\n');
+        ctx.font = `${isBold ? "bold" : ""} ${fontSize} sans-serif`;
+        paragraphs.forEach(para => {
+          let line = '';
+          const words = para.split(''); 
+          for(let n = 0; n < words.length; n++) {
+            const testLine = line + words[n];
+            const metrics = ctx.measureText(testLine);
+            if (metrics.width > maxWidth && n > 0) {
+              lines.push(line);
+              line = words[n];
+            } else {
+              line = testLine;
+            }
+          }
+          lines.push(line);
+        });
+        return lines;
+      };
+
+      // 表示するかどうかの判定
+      const hasArchetype = archetype && showArchetype;
+      const hasConcepts = concepts && showConcepts;
+      const hasTurnMoves = turnMoves.length > 0 && showTurnMoves;
+
+      let archetypeLines: string[] = [];
+      let conceptsLines: string[] = [];
+      let infoHeight = 0;
+      let timelineHeight = 0;
+      const TEXT_LINE_HEIGHT = 30;
+      const TIMELINE_GAP = 20;
+
+      if (hasArchetype || hasConcepts || hasTurnMoves) {
+        infoHeight += INFO_AREA_GAP;
+        
+        // ヘッダーテキスト (Archetype/Concepts)
+        if (hasArchetype) archetypeLines = wrapText(archetype!, textWidth);
+        if (hasConcepts) conceptsLines = wrapText(concepts!, textWidth);
+        
+        if (hasArchetype || hasConcepts) {
+          infoHeight += (archetypeLines.length + conceptsLines.length) * TEXT_LINE_HEIGHT + 120; // 見出しとマージン
+        }
+
+        // タイムライン (TurnMoves)
+        if (hasTurnMoves) {
+          infoHeight += 60; // 見出し
+          turnMoves!.forEach(move => {
+            const actionLines = wrapText(move.action, textWidth - 60, "20px");
+            const itemHeight = Math.max(actionLines.length * 28, 40);
+            timelineHeight += itemHeight + TIMELINE_GAP;
+          });
+          infoHeight += timelineHeight;
+        }
+        
+        infoHeight += 40; // 余白
+      }
+
+      // 最終的なキャンバス高さ
+      const canvasHeight = HEADER_HEIGHT + COL_HEADER_HEIGHT + maxMainHeight + sideHeight + infoHeight + FOOTER_HEIGHT;
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+
+      // --- 描画開始 ---
 
       // 画像ロードヘルパー
       const loadImage = (url: string): Promise<HTMLImageElement> => new Promise((resolve, reject) => {
@@ -356,16 +367,11 @@ export default function DeckPanel({
          const iconImg = await loadImage(setIconUrl);
          ctx.save();
          ctx.filter = "invert(100%)";
-         
-         let drawW = SYMBOL_SIZE;
-         let drawH = SYMBOL_SIZE;
+         let drawW = SYMBOL_SIZE, drawH = SYMBOL_SIZE;
          const ratio = iconImg.width / iconImg.height;
-         if (ratio > 1) drawH = SYMBOL_SIZE / ratio;
-         else drawW = SYMBOL_SIZE * ratio;
-         
+         if (ratio > 1) drawH = SYMBOL_SIZE / ratio; else drawW = SYMBOL_SIZE * ratio;
          const iconX = PADDING_X + (SYMBOL_SIZE - drawW) / 2;
          const iconY = PADDING_Y + (SYMBOL_SIZE - drawH) / 2;
-
          ctx.drawImage(iconImg, iconX, iconY, drawW, drawH);
          ctx.restore();
       } catch(e) {}
@@ -376,7 +382,7 @@ export default function DeckPanel({
       ctx.fillText(`${deckName}`, TITLE_X, 65);
       
       ctx.fillStyle = "#94a3b8"; ctx.font = "bold 20px sans-serif";
-      const setInfo = `(${selectedSet.toUpperCase()})  •  Main: ${mainCount} / Side: ${sideCount}`;
+      const setInfo = `(${selectedSet.toUpperCase()})  •  Main: ${mainCount} / Side: ${sideCount}`;
       ctx.fillText(setInfo, TITLE_X, 100);
 
       // 3. コメント描画
@@ -385,22 +391,18 @@ export default function DeckPanel({
         const commentX = canvasWidth - PADDING_X - commentW;
         const commentY = PADDING_Y;
         const commentH = 110;
-
         ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
         ctx.fillRect(commentX, commentY, commentW, commentH);
         ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
         ctx.strokeRect(commentX, commentY, commentW, commentH);
-
         ctx.fillStyle = "#e2e8f0";
         ctx.font = "16px sans-serif";
         ctx.textBaseline = "top";
-        
         const words = deckComment.split(""); 
         let line = "";
         let lineY = commentY + 10;
         const lineHeight = 24;
         const maxWidth = commentW - 20;
-
         for (let n = 0; n < words.length; n++) {
           const testLine = line + words[n];
           const metrics = ctx.measureText(testLine);
@@ -409,9 +411,7 @@ export default function DeckPanel({
             line = words[n];
             lineY += lineHeight;
             if (lineY > commentY + commentH - 20) break;
-          } else {
-            line = testLine;
-          }
+          } else { line = testLine; }
         }
         ctx.fillText(line, commentX + 10, lineY);
         ctx.textBaseline = "alphabetic";
@@ -420,14 +420,12 @@ export default function DeckPanel({
       // --- 統計情報 ---
       const statsStartX = 40;
       const statsY = 140;
-      
       const drawRarityDot = (x: number, color: string, count: number, label: string) => {
          ctx.beginPath(); ctx.arc(x, statsY, 8, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
          ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 16px sans-serif"; ctx.fillText(`${count}`, x + 15, statsY + 6);
          ctx.fillStyle = "#64748b"; ctx.font = "12px sans-serif"; ctx.fillText(label, x + 15, statsY + 22);
          return 60;
       };
-      
       let currentX = statsStartX;
       currentX += drawRarityDot(currentX, "#ef4444", rarityCount.mythic, "M"); 
       currentX += drawRarityDot(currentX, "#eab308", rarityCount.rare, "R");   
@@ -443,7 +441,6 @@ export default function DeckPanel({
       const manaX = avgX + 120;
       const manaSymbols = ["W", "U", "B", "R", "G", "C"] as const;
       let mOffset = 0;
-      
       const symbolImgs: Record<string, HTMLImageElement> = {};
       const loadSymbolPromises = manaSymbols.map(async (sym) => {
         if (manaCount[sym] > 0) {
@@ -455,7 +452,6 @@ export default function DeckPanel({
         }
       });
       await Promise.all(loadSymbolPromises);
-
       manaSymbols.forEach(sym => {
         if (manaCount[sym] > 0 && symbolImgs[sym]) {
            const size = 20;
@@ -537,27 +533,15 @@ export default function DeckPanel({
               ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
 
               if (keyCardIds.includes(card.id)) {
-                const starX = x + 25;
-                const starY = cardY + 45; 
-
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(starX, starY, 15, 0, Math.PI * 2);
-                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-                ctx.fill();
-                ctx.strokeStyle = "#fbbf24";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.shadowColor = "#fbbf24";
-                ctx.shadowBlur = 10;
-                ctx.fillStyle = "#fbbf24";
-                ctx.font = "20px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
+                const starX = x + 25; const starY = cardY + 45; 
+                ctx.save(); ctx.beginPath(); ctx.arc(starX, starY, 15, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; ctx.fill();
+                ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 10;
+                ctx.fillStyle = "#fbbf24"; ctx.font = "20px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
                 ctx.fillText("★", starX, starY + 2);
                 ctx.restore();
               }
-              
               cardY += STACK_OFFSET;
             } catch (e) {
               ctx.fillStyle = "#334155"; ctx.fillRect(x, cardY, CARD_WIDTH, CARD_HEIGHT); ctx.fillStyle = "#fff"; ctx.fillText(card.name.substring(0, 15), x + 5, cardY + 20); cardY += STACK_OFFSET;
@@ -583,7 +567,6 @@ export default function DeckPanel({
               await sleep(80);
               const img = await loadImage(imageUrl);
               ctx.drawImage(img, x, y, CARD_WIDTH, CARD_HEIGHT);
-              
               const badgeSize = 18;
               const badgeX = x + CARD_WIDTH - 25;
               const badgeY = y + 45;
@@ -593,31 +576,109 @@ export default function DeckPanel({
               ctx.fillStyle = "#ffffff"; ctx.font = "bold 18px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
               ctx.fillText(`x${card.quantity}`, badgeX, badgeY + 1);
               ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
-
               if (keyCardIds.includes(card.id)) {
-                const starX = x + 25;
-                const starY = y + 45; 
-
-                ctx.save();
-                ctx.beginPath();
-                ctx.arc(starX, starY, 15, 0, Math.PI * 2);
-                ctx.fillStyle = "rgba(0, 0, 0, 0.8)";
-                ctx.fill();
-                ctx.strokeStyle = "#fbbf24";
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.shadowColor = "#fbbf24";
-                ctx.shadowBlur = 10;
-                ctx.fillStyle = "#fbbf24";
-                ctx.font = "20px sans-serif";
-                ctx.textAlign = "center";
-                ctx.textBaseline = "middle";
+                const starX = x + 25; const starY = y + 45; 
+                ctx.save(); ctx.beginPath(); ctx.arc(starX, starY, 15, 0, Math.PI * 2);
+                ctx.fillStyle = "rgba(0, 0, 0, 0.8)"; ctx.fill();
+                ctx.strokeStyle = "#fbbf24"; ctx.lineWidth = 2; ctx.stroke();
+                ctx.shadowColor = "#fbbf24"; ctx.shadowBlur = 10;
+                ctx.fillStyle = "#fbbf24"; ctx.font = "20px sans-serif"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
                 ctx.fillText("★", starX, starY + 2);
                 ctx.restore();
               }
-
             } catch (e) {}
           }
+        }
+      }
+
+      // --- ★追加: Info Area (Archetype, Concepts, Timeline) ---
+      let currentY = HEADER_HEIGHT + COL_HEADER_HEIGHT + maxMainHeight + sideHeight;
+      
+      if (hasArchetype || hasConcepts || hasTurnMoves) {
+        currentY += INFO_AREA_GAP;
+        
+        // 区切り線
+        ctx.strokeStyle = "#334155";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(PADDING_X, currentY);
+        ctx.lineTo(canvasWidth - PADDING_X, currentY);
+        ctx.stroke();
+
+        currentY += 50;
+
+        // ブロック描画関数
+        const drawBlock = (label: string, lines: string[], color: string) => {
+          if (lines.length === 0) return;
+          ctx.fillStyle = color;
+          ctx.font = "bold 24px sans-serif";
+          ctx.fillText(label, PADDING_X, currentY);
+          currentY += 35;
+          ctx.fillStyle = "#e2e8f0";
+          ctx.font = "20px sans-serif";
+          lines.forEach(line => {
+            ctx.fillText(line, PADDING_X, currentY);
+            currentY += 30;
+          });
+          currentY += 20;
+        };
+
+        if (hasArchetype) drawBlock("【Archetype】", archetypeLines, "#60a5fa"); // Blue
+        if (hasConcepts) drawBlock("【Concepts】", conceptsLines, "#facc15"); // Yellow
+
+        // タイムライン描画
+        if (hasTurnMoves) {
+          currentY += 20;
+          ctx.fillStyle = "#4ade80"; // Green
+          ctx.font = "bold 24px sans-serif";
+          ctx.fillText("【Game Plan】", PADDING_X, currentY);
+          currentY += 40;
+
+          const timelineStartX = PADDING_X + 15;
+          const TIMELINE_CIRCLE_R = 15;
+
+          ctx.lineWidth = 4;
+          ctx.strokeStyle = "#475569"; // slate-600
+
+          turnMoves!.forEach((move, i) => {
+            const actionLines = wrapText(move.action, textWidth - 60, "20px");
+            const itemHeight = Math.max(actionLines.length * 28, 40);
+            
+            // 線を引く
+            const lineLength = (i === turnMoves!.length - 1) ? itemHeight : (itemHeight + TIMELINE_GAP);
+            ctx.beginPath();
+            ctx.moveTo(timelineStartX, currentY);
+            ctx.lineTo(timelineStartX, currentY + lineLength);
+            ctx.stroke();
+
+            // 円 (Badge)
+            ctx.beginPath();
+            ctx.arc(timelineStartX, currentY + 10, TIMELINE_CIRCLE_R + 2, 0, Math.PI * 2);
+            ctx.fillStyle = "#0f172a"; // 背景色で抜く
+            ctx.fill();
+
+            ctx.beginPath();
+            ctx.arc(timelineStartX, currentY + 10, TIMELINE_CIRCLE_R, 0, Math.PI * 2);
+            ctx.fillStyle = "#3b82f6"; // blue-500
+            ctx.fill();
+
+            // ターン番号
+            ctx.fillStyle = "#fff";
+            ctx.font = "bold 14px sans-serif";
+            ctx.textAlign = "center";
+            if (move.turn.length > 2) ctx.font = "bold 10px sans-serif";
+            ctx.fillText(move.turn, timelineStartX, currentY + 15);
+            ctx.textAlign = "left"; 
+
+            // アクションテキスト
+            ctx.fillStyle = "#e2e8f0";
+            ctx.font = "20px sans-serif";
+            actionLines.forEach((line, lineIdx) => {
+              ctx.fillText(line, timelineStartX + 40, currentY + 18 + (lineIdx * 28));
+            });
+
+            currentY += itemHeight + TIMELINE_GAP;
+          });
         }
       }
 
@@ -653,7 +714,6 @@ export default function DeckPanel({
     }
   };
 
-  // ★追加: リセット処理ハンドラ
   const handleReset = () => {
     if (confirm("現在のデッキ内容（カード、名前、コメントなど）をすべて消去しますか？\nこの操作は取り消せません。")) {
       onResetDeck();

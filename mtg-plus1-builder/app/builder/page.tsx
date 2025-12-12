@@ -3,18 +3,19 @@
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
-import { Card, DeckCard, EXPANSIONS, LANGUAGES, Expansion } from "@/types";
+import { Card, DeckCard, EXPANSIONS, LANGUAGES, Expansion, TurnMove } from "@/types";
 import SearchPanel from "@/components/SearchPanel";
 import DeckPanel from "@/components/DeckPanel";
+import InfoPanel from "@/components/InfoPanel"; // ★追加
 import Footer from "@/components/Footer";
 import AnalysisPanel from "@/components/AnalysisPanel"; 
 import SampleHandPanel from "@/components/SampleHandPanel"; 
 import { useAllowedSets } from "@/hooks/useAllowedSets";
 import { useBannedCards } from "@/hooks/useBannedCards";
 
-import { Search as SearchIcon, BarChart3, Play } from "lucide-react";
+import { Search as SearchIcon, BarChart3, Play, Info } from "lucide-react";
 
-export default function Home() {
+export default function BuilderPage() {
   const [selectedSet, setSelectedSet] = useState("fdn");
   const [language, setLanguage] = useState("ja");
   
@@ -31,7 +32,22 @@ export default function Home() {
 
   const [keyCardIds, setKeyCardIds] = useState<string[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"search" | "analysis" | "sample">("search");
+  const [activeTab, setActiveTab] = useState<"search" | "analysis" | "sample" | "info">("search");
+
+  // ★変更: 詳細情報のState
+  const [archetype, setArchetype] = useState("");
+  const [concepts, setConcepts] = useState("");
+  // 文字列ではなく構造化データに変更
+  const [turnMoves, setTurnMoves] = useState<TurnMove[]>([
+    { id: "1", turn: "1", action: "" },
+    { id: "2", turn: "2", action: "" },
+    { id: "3", turn: "3", action: "" },
+  ]);
+
+  // ★追加: 表示設定用State (初期値はtrue=表示)
+  const [showArchetype, setShowArchetype] = useState(true);
+  const [showConcepts, setShowConcepts] = useState(true);
+  const [showTurnMoves, setShowTurnMoves] = useState(true);
 
   const { allowedSets, loading: setsLoading } = useAllowedSets();
 
@@ -50,7 +66,6 @@ export default function Home() {
     return allowedSets;
   }, [allowedSets, setsLoading]);
 
-  // エキスパンション名のマップ (コード -> 正式名称)
   const expansionNameMap = useMemo(() => {
     const map: Record<string, string> = {};
     displayExpansions.forEach(ex => {
@@ -59,16 +74,10 @@ export default function Home() {
     return map;
   }, [displayExpansions, language]);
 
-  // --- 共通データ整形関数 ---
-  // Scryfallのデータを整形（日本語名の補完、フリガナ削除）
   const formatCardData = (card: Card): Card => {
     const newCard = { ...card };
-    
-    // フリガナ削除ヘルパー
     const clean = (str?: string) => str?.replace(/[（(].*?[）)]/g, "") || undefined;
 
-    // 1. 各面 (card_faces) のクリーニング
-    // 先に各面の printed_name を綺麗にしておく
     if (newCard.card_faces) {
       newCard.card_faces = newCard.card_faces.map((face: any) => ({
         ...face,
@@ -76,36 +85,27 @@ export default function Home() {
       }));
     }
 
-    // 2. トップレベルの名前 (printed_name) の解決
     if (newCard.printed_name) {
-      // 既にトップレベルに日本語名があれば、それをクリーニング
       newCard.printed_name = clean(newCard.printed_name);
     } 
     
-    // ★修正ポイント: else if で繋げず、printed_nameがない場合は常に結合を試みる
-    // lang判定も削除し、データが存在すれば必ず結合する
     if (!newCard.printed_name && newCard.card_faces) {
-      // 各面の「日本語名(printed_name)」があればそれを使い、なければ「英語名(name)」を使う
       const faceNames = newCard.card_faces.map((f: any) => f.printed_name || f.name);
       const joinedName = faceNames.join(" // ");
-      
-      // 結合した名前が存在すればセットする
       if (joinedName && joinedName !== " // ") {
         newCard.printed_name = joinedName;
       }
     }
-
     return newCard;
   };
 
   // LocalStorage読み込み
-useEffect(() => {
+  useEffect(() => {
     const savedData = localStorage.getItem("mtg-plus1-deck");
     if (savedData) {
       try {
         const parsed = JSON.parse(savedData);
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          // ★修正: formatCardDataの結果を as DeckCard でキャストする
           setDeck((parsed.cards || []).map((c: any) => formatCardData(c) as DeckCard));
           setSideboard((parsed.sideboard || []).map((c: any) => formatCardData(c) as DeckCard));
           
@@ -114,8 +114,21 @@ useEffect(() => {
           if (parsed.selectedSet) setSelectedSet(parsed.selectedSet);
           if (parsed.language) setLanguage(parsed.language);
           if (parsed.keyCardIds) setKeyCardIds(parsed.keyCardIds);
+
+          // ★追加: 詳細情報の読み込み
+          if (parsed.archetype) setArchetype(parsed.archetype);
+          if (parsed.concepts) setConcepts(parsed.concepts);
+          
+          // 旧データ(文字列)と新データ(配列)の互換性維持
+          if (parsed.turnMoves) {
+            if (Array.isArray(parsed.turnMoves)) {
+              setTurnMoves(parsed.turnMoves);
+            } else if (typeof parsed.turnMoves === 'string') {
+              setTurnMoves([{ id: "legacy", turn: "Memo", action: parsed.turnMoves }]);
+            }
+          }
+
         } else if (Array.isArray(parsed)) {
-          // ★修正: こちらも同様にキャスト
           setDeck(parsed.map((c: any) => formatCardData(c) as DeckCard));
         }
       } catch (e) { console.error(e); }
@@ -132,32 +145,34 @@ useEffect(() => {
         sideboard: sideboard,
         selectedSet: selectedSet,
         language: language,
-        keyCardIds: keyCardIds, // キーカードも保存
+        keyCardIds: keyCardIds,
+        // ★追加: 詳細情報も保存
+        archetype,
+        concepts,
+        turnMoves,
         updatedAt: new Date().toISOString()
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, sideboard, deckName, deckComment, selectedSet, language, keyCardIds]);
+  }, [deck, sideboard, deckName, deckComment, selectedSet, language, keyCardIds, archetype, concepts, turnMoves]); // 依存配列に追加
 
-const executeSearch = async (queryWithOptions: string) => {
+  const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
     setLoading(true);
     
     try {
       // 1. 基本設定
-      const targetSets = new Set(['fdn']); // Foundations関連
+      const targetSets = new Set(['fdn', 'fbb', 'j25']); // Foundations関連
       if (selectedSet) targetSets.add(selectedSet);
       
       const setsQuery = Array.from(targetSets).map(s => `set:${s}`).join(" OR ");
       const baseQuery = `(${setsQuery}) unique:prints`;
       const langQuery = language === 'ja' ? `(lang:ja OR lang:en)` : `lang:en`;
       
-      // Aルート用のクエリ（通常検索）
       const primaryQuery = `${baseQuery} ${langQuery} ${queryWithOptions}`;
       
       const promises = [];
 
-      // ヘルパー: 404を無視するfetch
       const safeFetch = (url: string) => {
         return fetch(url)
           .then(async (res) => {
@@ -180,41 +195,34 @@ const executeSearch = async (queryWithOptions: string) => {
         safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`)
       );
 
-      // --- B. クロス検索 (日本語入力時のみ) ---
+      // --- B. クロス検索 ---
       const hasJapaneseInput = /[ぁ-んァ-ン一-龠]/.test(queryWithOptions);
       
       if (language === 'ja' && hasJapaneseInput) {
-        
-        // ★★★ 修正ポイント: 検索ワードからセット指定やカッコを強制削除する ★★★
-        // 例: "解呪 (set:fdn)" -> "解呪 "
         let cleanQuery = queryWithOptions
-          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "") // (s:fdn OR s:...) の除去
-          .replace(/set:[a-zA-Z0-9]+/gi, "") // set:xxx の除去
-          .replace(/s:[a-zA-Z0-9]+/gi, "")   // s:xxx の除去
-          .replace(/[()]/g, "")              // 残ったカッコの除去
+          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "")
+          .replace(/set:[a-zA-Z0-9]+/gi, "")
+          .replace(/s:[a-zA-Z0-9]+/gi, "")
+          .replace(/[()]/g, "")
           .trim();
 
         if (cleanQuery) {
-          // 1. クリーンになった単語だけで、全セットから日本語カードを探す
           const nameQuery = `${cleanQuery} lang:ja unique:prints`;
           
           const oracleSearchPromise = safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}`)
             .then(async (jaCards: any[]) => {
               if (jaCards.length === 0) return [];
 
-              // 見つかったカードのOracle IDを抽出 (上位20件)
               const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
               const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
 
               if (uniqueOracleIds.length === 0) return [];
 
-              // 2. そのIDを持つカードをFoundations等から検索
               const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
               const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
               
               const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
 
-              // 3. 日本語名を注入
               return targetCards.map((engCard: any) => {
                 const originalJa = jaCards.find((ja: any) => ja.oracle_id === engCard.oracle_id);
                 if (originalJa) {
@@ -242,8 +250,30 @@ const executeSearch = async (queryWithOptions: string) => {
       
       const uniqueCardsMap = new Map();
       allCards.forEach((c: any) => {
-        if (c && c.id && !uniqueCardsMap.has(c.id)) {
-          uniqueCardsMap.set(c.id, formatCardData(c));
+        if (c && c.oracle_id) { // oracle_idをキーにする
+          const existing = uniqueCardsMap.get(c.oracle_id);
+          const formattedNew = formatCardData(c);
+
+          if (!existing) {
+            uniqueCardsMap.set(c.oracle_id, formattedNew);
+          } else {
+            let replace = false;
+            // 日本語優先
+            if (existing.lang !== 'ja' && formattedNew.lang === 'ja') {
+              replace = true;
+            }
+            // 番号が若い方を優先
+            else if (existing.lang === formattedNew.lang) {
+              const numA = parseInt(existing.collector_number, 10);
+              const numB = parseInt(formattedNew.collector_number, 10);
+              if (!isNaN(numB) && (isNaN(numA) || numB < numA)) {
+                replace = true;
+              }
+            }
+            if (replace) {
+              uniqueCardsMap.set(c.oracle_id, formattedNew);
+            }
+          }
         }
       });
 
@@ -344,7 +374,6 @@ const executeSearch = async (queryWithOptions: string) => {
               const candidates = foundLands.filter(c => c.name === name);
               if (candidates.length > 0) {
                 candidates.sort((a, b) => getScore(b) - getScore(a));
-                // ★修正: formatCardDataを使用
                 bestCardMap.set(name, formatCardData(candidates[0]));
               }
             });
@@ -369,7 +398,6 @@ const executeSearch = async (queryWithOptions: string) => {
               const candidates = foundCards.filter(c => c.name === name);
               if (candidates.length > 0) {
                 candidates.sort((a, b) => getScore(b) - getScore(a));
-                // ★修正: formatCardDataを使用
                 bestCardMap.set(name, formatCardData(candidates[0]));
                 foundNames.add(name);
               }
@@ -397,7 +425,6 @@ const executeSearch = async (queryWithOptions: string) => {
                 if (candidates.length > 0) {
                   candidates.sort((a, b) => getScore(b) - getScore(a));
                   if (!bestCardMap.has(name)) {
-                    // ★修正: formatCardDataを使用
                     bestCardMap.set(name, formatCardData(candidates[0]));
                   }
                 }
@@ -408,36 +435,22 @@ const executeSearch = async (queryWithOptions: string) => {
         }
       }
 
-      // Phase 4: 疑似日本語化パッチ (デバッグログ付き修正版)
+      // Phase 4: 疑似日本語化パッチ
       if (language === 'ja') {
         const hasJapanese = (str?: string) => str && /[ぁ-んァ-ン一-龠]/.test(str);
 
-        // 修正対象の抽出
         const targets = Array.from(bestCardMap.entries()).filter(([_, card]) => {
           if (card.lang !== 'ja') return true;
-          // 日本語版データなのに、表示名に日本語が含まれていないものを対象にする
-          const isInvalidJa = !hasJapanese(card.printed_name);
-          return isInvalidJa;
+          return !hasJapanese(card.printed_name);
         });
         
-        // ▼ログ: どのカードが「日本語化が必要」と判定されたか
-        console.log("Phase 4 Targets:", targets.map(([name, c]) => ({ 
-            name, 
-            lang: c.lang, 
-            current_printed_name: c.printed_name,
-            oracle_id: (c as any).oracle_id 
-        })));
-
         if (targets.length > 0) {
           const oracleIds = targets.map(([_, card]) => (card as any).oracle_id).filter(Boolean);
           
           for (let i = 0; i < oracleIds.length; i += BATCH_SIZE) {
              const batchIds = oracleIds.slice(i, i + BATCH_SIZE);
              const idConditions = batchIds.map(oid => `oracle_id:${oid}`).join(" OR ");
-             // どのセットでも良いので日本語版を探す
              const query = `(${idConditions}) lang:ja unique:prints`;
-
-             console.log(`Phase 4 Query [Batch ${i/BATCH_SIZE + 1}]:`, query);
 
              try {
                 const url = `https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`;
@@ -446,15 +459,7 @@ const executeSearch = async (queryWithOptions: string) => {
                    const data = await res.json();
                    const foundJaCards: any[] = data.data || [];
                    
-                   // ▼ログ: APIが見つけてきた日本語カード候補
-                   console.log(`Phase 4 Found Candidates:`, foundJaCards.map(c => ({
-                       name: c.name,
-                       printed_name: c.printed_name,
-                       set: c.set
-                   })));
-
                    targets.forEach(([name, originalCard]) => {
-                      // 自分のOracle IDを持ち、かつ「ちゃんと日本語名が入っている」データを優先して探す
                       const jaMatch = foundJaCards.find(c => 
                         c.oracle_id === (originalCard as any).oracle_id &&
                         (hasJapanese(c.printed_name) || (c.card_faces && c.card_faces.some((f:any) => hasJapanese(f.printed_name))))
@@ -462,10 +467,6 @@ const executeSearch = async (queryWithOptions: string) => {
 
                       if (jaMatch) {
                          const formattedJa = formatCardData(jaMatch);
-                         
-                         // ▼ログ: 適用成功
-                         console.log(`✅ Applying Japanese Patch: ${name} -> ${formattedJa.printed_name}`);
-
                          bestCardMap.set(name, {
                             ...originalCard,
                             printed_name: formattedJa.printed_name, 
@@ -474,21 +475,12 @@ const executeSearch = async (queryWithOptions: string) => {
                                 printed_name: formattedJa.card_faces?.[idx]?.printed_name || face.printed_name
                             })) || formattedJa.card_faces
                          });
-                      } else {
-                         // ▼ログ: 対象だったが見つからなかった（または条件を満たす日本語版がなかった）
-                         if (batchIds.includes((originalCard as any).oracle_id)) {
-                             console.warn(`❌ No valid Japanese version found for: ${name}`);
-                         }
                       }
                    });
-                } else {
-                    console.error("Phase 4 API Error:", res.status);
                 }
              } catch (e) { console.error("Pseudo-Japanese patch error", e); }
              await new Promise(r => setTimeout(r, 100));
           }
-        } else {
-            console.log("Phase 4: No targets found (All cards seem to have Japanese names).");
         }
       }
 
@@ -536,12 +528,12 @@ const executeSearch = async (queryWithOptions: string) => {
   const handleResetDeck = () => {
     setDeck([]);
     setSideboard([]);
-    setDeckName("");
+    setDeckName("Untitled Deck");
     setDeckComment("");
     setKeyCardIds([]); 
   };
 
-return (
+  return (
     <main className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden">
       
       <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0">
@@ -580,6 +572,13 @@ return (
               >
                 <Play size={14} /> Solitaire
               </button>
+              {/* ★追加: Infoタブ */}
+              <button
+                onClick={() => setActiveTab("info")}
+                className={`flex-1 py-2 text-xs font-bold flex items-center justify-center gap-2 transition-colors ${activeTab === "info" ? "bg-slate-800 text-yellow-400 border-b-2 border-yellow-500" : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50"}`}
+              >
+                <Info size={14} /> Info
+              </button>
             </div>
 
             {/* コンテンツ切り替え (CSS hiddenを使用) */}
@@ -608,6 +607,19 @@ return (
                 <SampleHandPanel deck={deck} />
               </div>
 
+              {/* ★追加: 4. Info Panel */}
+              <div className={`absolute inset-0 flex flex-col ${activeTab === "info" ? "z-10" : "hidden"}`}>
+                <InfoPanel 
+                  archetype={archetype} setArchetype={setArchetype}
+                  concepts={concepts} setConcepts={setConcepts}
+                  turnMoves={turnMoves} setTurnMoves={setTurnMoves}
+                  // 表示設定
+                  showArchetype={showArchetype} setShowArchetype={setShowArchetype}
+                  showConcepts={showConcepts} setShowConcepts={setShowConcepts}
+                  showTurnMoves={showTurnMoves} setShowTurnMoves={setShowTurnMoves}
+                />
+              </div>
+
             </div>
           </Panel>
 
@@ -634,6 +646,13 @@ return (
               onToggleKeyCard={handleToggleKeyCard}
               onResetDeck={handleResetDeck}
               bannedCardsMap={simpleBannedMap}
+              // ★追加: 詳細情報と表示設定を渡す
+              archetype={archetype}
+              concepts={concepts}
+              turnMoves={turnMoves}
+              showArchetype={showArchetype}
+              showConcepts={showConcepts}
+              showTurnMoves={showTurnMoves}
             />
           </Panel>
         </PanelGroup>
