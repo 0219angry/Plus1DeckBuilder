@@ -666,6 +666,7 @@ export default function BuilderPage() {
               bannedCardsMap={simpleBannedMap}
               // ★追加: 詳細情報と表示設定を渡す
               archetype={archetype}
+              colors={colors}
               concepts={concepts}
               turnMoves={turnMoves}
               showArchetype={showArchetype}
