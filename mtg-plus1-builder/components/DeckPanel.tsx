@@ -227,13 +227,7 @@ export default function DeckPanel({
             placeholder="Deck Name"
             className="flex-1 bg-transparent text-lg font-bold text-white placeholder-slate-600 border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none transition-colors px-1"
           />
-          <button 
-            onClick={() => setShowCommentBox(!showCommentBox)}
-            className={`p-1.5 rounded transition-colors ${showCommentBox ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white bg-slate-800"}`}
-            title="コメント/メモを入力"
-          >
-            <MessageSquare size={18} />
-          </button>
+
         </div>
 
 
