@@ -10,9 +10,8 @@ type Props = {
   deck: DeckCard[];
   sideboard: DeckCard[]; 
   deckName: string;
+  builderName: string;
   onChangeDeckName: (name: string) => void;
-  deckComment: string; 
-  onChangeDeckComment: (comment: string) => void; 
   onRemove: (card: DeckCard, target: "main" | "side") => void; 
   onQuantityChange: (card: DeckCard, amount: number, target: "main" | "side") => void;
   onUnifyLanguage: () => void;
@@ -48,9 +47,8 @@ export default function DeckPanel({
   deck = [], 
   sideboard = [],
   deckName, 
+  builderName = "",
   onChangeDeckName, 
-  deckComment, 
-  onChangeDeckComment, 
   onRemove, 
   onQuantityChange,
   onUnifyLanguage, 
@@ -174,8 +172,8 @@ export default function DeckPanel({
         deck,
         sideboard,
         deckName,
+        builderName,
         selectedSet,
-        deckComment,
         keyCardIds,
         colors: colors || [],
         archetype: archetype || "",
@@ -238,17 +236,6 @@ export default function DeckPanel({
           </button>
         </div>
 
-        {/* コメント欄 */}
-        {showCommentBox && (
-          <div className="animate-in slide-in-from-top-2 duration-200">
-            <textarea
-              value={deckComment}
-              onChange={(e) => onChangeDeckComment(e.target.value)}
-              placeholder="デッキのコンセプトやメモを入力（画像にも出力されます）"
-              className="w-full bg-slate-950/50 border border-slate-700 rounded p-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500 min-h-[60px] resize-y placeholder:text-slate-600"
-            />
-          </div>
-        )}
 
         <div className="flex justify-between items-center">
           <div className="flex bg-slate-800 rounded p-1 border border-slate-700">

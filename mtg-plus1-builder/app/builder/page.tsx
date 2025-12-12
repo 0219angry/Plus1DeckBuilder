@@ -23,7 +23,7 @@ export default function BuilderPage() {
   
   // デッキ情報
   const [deckName, setDeckName] = useState("Untitled Deck");
-  const [deckComment, setDeckComment] = useState("");
+  const [builderName, setBuilderName] = useState("");
   const [deck, setDeck] = useState<DeckCard[]>([]);
   const [sideboard, setSideboard] = useState<DeckCard[]>([]);
   
@@ -112,7 +112,6 @@ export default function BuilderPage() {
           setSideboard((parsed.sideboard || []).map((c: any) => formatCardData(c) as DeckCard));
           
           setDeckName(parsed.name || "Untitled Deck");
-          setDeckComment(parsed.comment || ""); 
           if (parsed.selectedSet) setSelectedSet(parsed.selectedSet);
           if (parsed.language) setLanguage(parsed.language);
           if (parsed.keyCardIds) setKeyCardIds(parsed.keyCardIds);
@@ -142,7 +141,6 @@ export default function BuilderPage() {
     if (deck.length > 0 || deckName !== "Untitled Deck") {
       const dataToSave = {
         name: deckName,
-        comment: deckComment,
         cards: deck,
         sideboard: sideboard,
         selectedSet: selectedSet,
@@ -156,7 +154,7 @@ export default function BuilderPage() {
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, sideboard, deckName, deckComment, selectedSet, language, keyCardIds, archetype, concepts, turnMoves]); // 依存配列に追加
+  }, [deck, sideboard, deckName, selectedSet, language, keyCardIds, archetype, concepts, turnMoves]); // 依存配列に追加
 
   const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
@@ -546,7 +544,6 @@ export default function BuilderPage() {
     setDeck([]);
     setSideboard([]);
     setDeckName("Untitled Deck");
-    setDeckComment("");
     setKeyCardIds([]); 
   };
 
@@ -628,6 +625,7 @@ export default function BuilderPage() {
               <div className={`absolute inset-0 flex flex-col ${activeTab === "info" ? "z-10" : "hidden"}`}>
                 <InfoPanel 
                   colors={colors} setColors={setColors}
+                  builderName={builderName} setBuilderName={setBuilderName}
                   archetype={archetype} setArchetype={setArchetype}
                   concepts={concepts} setConcepts={setConcepts}
                   turnMoves={turnMoves} setTurnMoves={setTurnMoves}
@@ -650,9 +648,8 @@ export default function BuilderPage() {
               deck={deck}
               sideboard={sideboard}
               deckName={deckName}
+              builderName={builderName}
               onChangeDeckName={setDeckName}
-              deckComment={deckComment} 
-              onChangeDeckComment={setDeckComment} 
               onRemove={removeFromDeck} 
               onUnifyLanguage={unifyDeckLanguage}
               onImportDeck={handleImportDeck}

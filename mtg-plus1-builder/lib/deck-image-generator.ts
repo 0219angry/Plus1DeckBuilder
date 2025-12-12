@@ -6,8 +6,8 @@ export type DeckImageConfig = {
   deck: DeckCard[];
   sideboard: DeckCard[];
   deckName: string;
+  builderName: string;
   selectedSet: string;
-  deckComment: string;
   colors: string[];
   keyCardIds: string[];
   
@@ -85,7 +85,7 @@ const drawIcon = (ctx: CanvasRenderingContext2D, type: "creature" | "spell", x: 
 
 export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<string> => {
   const { 
-    deck, sideboard, deckName, selectedSet, deckComment, colors, keyCardIds,
+    deck, sideboard, deckName, builderName, selectedSet, colors, keyCardIds,
     archetype, concepts, turnMoves, 
     showArchetype, showConcepts, showTurnMoves 
   } = config;
@@ -286,37 +286,82 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
   const setInfoY = displayArchetype ? 125 : 95;
   ctx.fillText(setInfo, TITLE_X, setInfoY);
 
-  // コメント
-  if (deckComment.trim()) {
-    const commentW = 400;
-    const commentX = canvasWidth - PADDING_X - commentW;
-    const commentY = PADDING_Y;
-    const commentH = 110;
-    ctx.fillStyle = "rgba(15, 23, 42, 0.7)";
-    ctx.fillRect(commentX, commentY, commentW, commentH);
-    ctx.strokeStyle = "rgba(148, 163, 184, 0.3)";
-    ctx.strokeRect(commentX, commentY, commentW, commentH);
-    ctx.fillStyle = "#e2e8f0";
-    ctx.font = "16px sans-serif";
-    ctx.textBaseline = "top";
-    const words = deckComment.split(""); 
-    let line = "";
-    let lineY = commentY + 10;
-    const lineHeight = 24;
-    const maxWidth = commentW - 20;
-    for (let n = 0; n < words.length; n++) {
-      const testLine = line + words[n];
-      const metrics = ctx.measureText(testLine);
-      if (metrics.width > maxWidth && n > 0) {
-        ctx.fillText(line, commentX + 10, lineY);
-        line = words[n];
-        lineY += lineHeight;
-        if (lineY > commentY + commentH - 20) break;
-      } else { line = testLine; }
+  // マナカーブデータの集計 (カラム分けと同じロジック: 1以下, 2, 3, 4, 5, 6以上)
+  const manaCurve = [0, 0, 0, 0, 0, 0];
+  deck.forEach(c => {
+    if (c.type_line.includes("Land")) return;
+    const cost = Math.floor(c.cmc || 0);
+    // 1マナ以下=0, 6マナ以上=5, それ以外は cost-1
+    const idx = cost <= 1 ? 0 : cost >= 6 ? 5 : cost - 1;
+    manaCurve[idx] += c.quantity;
+  });
+  
+  const maxCount = Math.max(...manaCurve, 4); // 最小でも高さ4相当のスケール確保
+  
+  // 描画エリア設定
+  const graphW = 320;
+  const graphH = 100;
+  const graphX = canvasWidth - PADDING_X - graphW;
+  const graphY = PADDING_Y + 10;
+  
+  // 背景ボックス (オプション: 少し暗くして視認性アップ)
+  ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
+  ctx.beginPath();
+  ctx.roundRect(graphX - 20, graphY - 10, graphW + 40, graphH + 30, 8);
+  ctx.fill();
+  ctx.strokeStyle = "rgba(148, 163, 184, 0.2)";
+  ctx.stroke();
+
+  // グラフ描画
+  const barWidth = 32;
+  const barGap = 18;
+  const labels = ["1", "2", "3", "4", "5", "6+"];
+  
+  manaCurve.forEach((count, i) => {
+    const x = graphX + i * (barWidth + barGap);
+    
+    // バーの高さ計算 (最大値に対する割合)
+    const barH = (count / maxCount) * (graphH - 20); // ラベル分20px引く
+    const y = graphY + (graphH - 20) - barH;
+
+    // バー描画
+    if (count > 0) {
+      // グラデーション
+      const gradBar = ctx.createLinearGradient(x, y, x, y + barH);
+      gradBar.addColorStop(0, "#60a5fa"); // blue-400
+      gradBar.addColorStop(1, "#3b82f6"); // blue-500
+      
+      ctx.fillStyle = gradBar;
+      ctx.beginPath();
+      ctx.roundRect(x, y, barWidth, barH, 4);
+      ctx.fill();
+
+      // 数値 (バーの上)
+      ctx.fillStyle = "#fff";
+      ctx.font = "bold 14px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(`${count}`, x + barWidth / 2, y - 5);
     }
-    ctx.fillText(line, commentX + 10, lineY);
-    ctx.textBaseline = "alphabetic";
-  }
+
+    // ラベル (X軸)
+    ctx.fillStyle = "#94a3b8"; // slate-400
+    ctx.font = "bold 12px sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(labels[i], x + barWidth / 2, graphY + graphH);
+    
+    // 0の時のベースラインマーカー
+    if (count === 0) {
+      ctx.fillStyle = "rgba(148, 163, 184, 0.2)";
+      ctx.fillRect(x, graphY + (graphH - 20) - 2, barWidth, 2);
+    }
+  });
+
+  // タイトル ("Mana Curve")
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#64748b";
+  ctx.font = "12px sans-serif";
+  ctx.fillText("Mana Curve", graphX + graphW, graphY - 15);
+  ctx.textAlign = "left"; // 元に戻す
 
   // 統計 (レアリティ・マナ)
   const statsStartX = 40;
@@ -566,14 +611,32 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
     }
   }
 
-  // フッター
+// -----------------------------------------------------------
+  // フッター (製作者名とサイト名を併記)
+  // -----------------------------------------------------------
   const footerY = canvasHeight - 35;
   ctx.fillStyle = "#94a3b8";
   ctx.font = "14px sans-serif";
   ctx.textAlign = "right";
+  
   const dateStr = new Date().toLocaleDateString();
-  ctx.fillText(`Created on ${dateStr} by MtG PLUS1`, canvasWidth - 40, footerY);
+  const appName = "plus1deckbuilder.com"; // サイト/アプリ名
+  
+  let footerText = "";
+  
+  if (builderName) {
+    // パターン1: 製作者名がある場合
+    // 表示例: Created by Yuta  •  MtG PLUS1  •  2025/12/12
+    footerText = `Created by ${builderName}  •  ${appName}  •  ${dateStr}`;
+  } else {
+    // パターン2: 製作者名がない場合
+    // 表示例: Created by MtG PLUS1  •  2025/12/12
+    footerText = `Created by ${appName}  •  ${dateStr}`;
+  }
 
+  ctx.fillText(footerText, canvasWidth - 40, footerY);
+
+  // 権利表記 (Left side)
   ctx.textAlign = "left";
   ctx.font = "12px sans-serif";
   ctx.fillStyle = "#64748b";

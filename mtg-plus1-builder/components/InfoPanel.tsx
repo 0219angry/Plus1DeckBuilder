@@ -26,6 +26,8 @@ const ARCHETYPES_DATA = [
 type Props = {
   colors: string[];
   setColors: (v: string[]) => void;
+  builderName: string;
+  setBuilderName: (v: string) => void;
   archetype: string; setArchetype: (v: string) => void;
   concepts: string; setConcepts: (v: string) => void;
   turnMoves: TurnMove[]; 
@@ -37,6 +39,7 @@ type Props = {
 
 export default function InfoPanel({ 
   colors, setColors,
+  builderName, setBuilderName
   archetype, setArchetype, 
   concepts, setConcepts, 
   turnMoves, setTurnMoves,
@@ -122,6 +125,20 @@ export default function InfoPanel({
           <Languages size={12} />
           <span>{lang === 'ja' ? '日本語' : 'English'}</span>
         </button>
+      </div>
+      {/* ★追加: 製作者名入力エリア */}
+      <div className="space-y-2">
+        <label className="text-xs font-bold text-slate-300 flex items-center gap-2">
+          <User size={14} />
+          製作者 (Creator)
+        </label>
+        <input
+          type="text"
+          value={builderName}
+          onChange={(e) => setBuilderName(e.target.value)}
+          placeholder="あなたの名前 (Optional)"
+          className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-white focus:border-blue-500 outline-none placeholder:text-slate-600"
+        />
       </div>
 
       <div className="space-y-3">
