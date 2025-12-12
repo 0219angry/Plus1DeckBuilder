@@ -3,7 +3,6 @@ import { DeckCard, Card, TurnMove } from "@/types";
 import { List as ListIcon, LayoutGrid, Check, RefreshCw, Download, ChevronDown, Upload, Image as ImageIcon, Loader2, MessageSquare, Trash2 } from "lucide-react";
 import CardView from "./CardView";
 import ImportModal from "./ImportModal";
-// 画像生成ユーティリティをインポート
 import { generateDeckImageCanvas, DeckImageConfig } from "@/lib/deck-image-generator";
 
 type Props = {
@@ -27,12 +26,14 @@ type Props = {
 
   // 詳細情報と表示設定
   archetype?: string;
-  colors?: string[]; // string[] に修正
+  colors?: string[];
   concepts?: string;
   turnMoves?: TurnMove[];
   showArchetype?: boolean;
   showConcepts?: boolean;
   showTurnMoves?: boolean;
+
+  readonly? : boolean; // 閲覧モードフラグ
 };
 
 // 定数定義
@@ -41,7 +42,6 @@ const SNOW_BASIC_LAND_NAMES_EN = ["Snow-Covered Plains", "Snow-Covered Island", 
 const ALL_BASIC_LAND_NAMES = [...BASIC_LAND_NAMES_EN, ...SNOW_BASIC_LAND_NAMES_EN, "平地", "島", "沼", "山", "森", "荒地", "冠雪の平地", "冠雪の島", "冠雪の沼", "冠雪の山", "冠雪の森"];
 const BASIC_LAND_TRANSLATION: Record<string, string> = { "Plains": "平地", "Island": "島", "Swamp": "沼", "Mountain": "山", "Forest": "森", "Wastes": "荒地", "Snow-Covered Plains": "冠雪の平地", "Snow-Covered Island": "冠雪の島", "Snow-Covered Swamp": "冠雪の沼", "Snow-Covered Mountain": "冠雪の山", "Snow-Covered Forest": "冠雪の森" };
 const CATEGORY_PRIORITY: Record<string, number> = { "Creature": 1, "Planeswalker": 2, "Battle": 3, "Instant": 4, "Sorcery": 5, "Artifact": 6, "Enchantment": 7, "Land": 8, "Other": 9 };
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export default function DeckPanel({ 
   deck = [], 
@@ -61,7 +61,6 @@ export default function DeckPanel({
   onToggleKeyCard,
   onResetDeck,
   bannedCardsMap = {},
-  // 詳細情報
   archetype = "",
   colors = [], 
   concepts = "",
@@ -69,6 +68,7 @@ export default function DeckPanel({
   showArchetype = true,
   showConcepts = true,
   showTurnMoves = true,
+  readonly = false, // デフォルトはfalse
 }: Props) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [activeTab, setActiveTab] = useState<"main" | "side">("main");
@@ -76,7 +76,6 @@ export default function DeckPanel({
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showImportModal, setShowImportModal] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
-  const [showCommentBox, setShowCommentBox] = useState(false); 
 
   const mainCount = deck.reduce((acc, c) => acc + c.quantity, 0);
   const sideCount = sideboard.reduce((acc, c) => acc + c.quantity, 0);
@@ -161,13 +160,11 @@ export default function DeckPanel({
     });
   };
 
-  // 画像生成処理 (外部ユーティリティ使用)
   const generateDeckImage = async () => {
     if (deck.length === 0) return;
     setIsGeneratingImage(true);
 
     try {
-      // 1. 設定オブジェクトを作成
       const config: DeckImageConfig = {
         deck,
         sideboard,
@@ -184,10 +181,8 @@ export default function DeckPanel({
         showTurnMoves: showTurnMoves ?? true,
       };
 
-      // 2. ユーティリティ関数呼び出し
       const dataUrl = await generateDeckImageCanvas(config);
 
-      // 3. ダウンロード処理
       const link = document.createElement("a");
       link.download = `${deckName.replace(/\s+/g, "_")}_${selectedSet}.png`;
       link.href = dataUrl;
@@ -215,43 +210,61 @@ export default function DeckPanel({
     <div className="flex flex-col h-full bg-slate-900/50">
       <div className="p-3 bg-slate-900 border-b border-slate-800 flex flex-col gap-3">
         
-        {/* デッキ名 & コメント */}
+        {/* デッキ名 (Readonly対応) */}
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-slate-500 select-none">
             ({selectedSet.toUpperCase()})
           </span>
-          <input
-            type="text"
-            value={deckName}
-            onChange={(e) => onChangeDeckName(e.target.value)}
-            placeholder="Deck Name"
-            className="flex-1 bg-transparent text-lg font-bold text-white placeholder-slate-600 border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none transition-colors px-1"
-          />
-
+          {readonly ? (
+            <div className="flex-1 flex flex-col justify-center">
+                <span className="text-lg font-bold text-white px-1 truncate" title={deckName}>
+                    {deckName}
+                </span>
+                {builderName && (
+                    <span className="text-xs text-slate-400 px-1 truncate">
+                        by {builderName}
+                    </span>
+                )}
+            </div>
+          ) : (
+            <input
+                type="text"
+                value={deckName}
+                onChange={(e) => onChangeDeckName(e.target.value)}
+                placeholder="Deck Name"
+                className="flex-1 bg-transparent text-lg font-bold text-white placeholder-slate-600 border-b border-transparent hover:border-slate-700 focus:border-blue-500 focus:outline-none transition-colors px-1"
+            />
+          )}
         </div>
-
 
         <div className="flex justify-between items-center">
           <div className="flex bg-slate-800 rounded p-1 border border-slate-700">
             <button onClick={() => setActiveTab("main")} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === "main" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>Main ({mainCount})</button>
             <button onClick={() => setActiveTab("side")} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === "side" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"}`}>Side ({sideCount})</button>
           </div>
+          
           <div className="flex items-center gap-2">
             
-            <button 
-              onClick={handleReset}
-              className="p-1.5 bg-slate-800 hover:bg-red-900/50 hover:text-red-400 border border-slate-700 hover:border-red-800 rounded text-slate-400 transition-colors"
-              title="デッキ内容をリセット"
-            >
-              <Trash2 size={14} />
-            </button>
+            {/* 編集系ボタンは readonly 時は非表示 */}
+            {!readonly && (
+                <>
+                    <button 
+                    onClick={handleReset}
+                    className="p-1.5 bg-slate-800 hover:bg-red-900/50 hover:text-red-400 border border-slate-700 hover:border-red-800 rounded text-slate-400 transition-colors"
+                    title="デッキ内容をリセット"
+                    >
+                    <Trash2 size={14} />
+                    </button>
 
-            <button onClick={onUnifyLanguage} disabled={isProcessing} className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 transition-colors" title="全カードの言語を統一">
-              <RefreshCw size={14} className={isProcessing ? "animate-spin" : ""} />
-            </button>
+                    <button onClick={onUnifyLanguage} disabled={isProcessing} className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 transition-colors" title="全カードの言語を統一">
+                    <RefreshCw size={14} className={isProcessing ? "animate-spin" : ""} />
+                    </button>
 
-            <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors border border-slate-600" title="テキストからデッキをインポート"><Upload size={14} /><span>Import</span></button>
+                    <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors border border-slate-600" title="テキストからデッキをインポート"><Upload size={14} /><span>Import</span></button>
+                </>
+            )}
             
+            {/* Exportは閲覧モードでも許可 */}
             <div className="relative">
               <button onClick={() => setShowExportMenu(!showExportMenu)} className="flex items-center gap-1 bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">{copied ? <Check size={14} /> : <Download size={14} />}<span>Export</span><ChevronDown size={12} /></button>
               {showExportMenu && (
@@ -266,6 +279,7 @@ export default function DeckPanel({
               )}
               {showExportMenu && <div className="fixed inset-0 z-40" onClick={() => setShowExportMenu(false)} />}
             </div>
+
             <div className="w-px h-4 bg-slate-700 mx-1"></div>
             <div className="flex bg-slate-800 rounded p-1 border border-slate-700">
               <button onClick={() => setViewMode("list")} className={`p-1 rounded ${viewMode === "list" ? "bg-slate-600 text-white" : "text-slate-400"}`}><ListIcon size={14} /></button>
@@ -283,20 +297,27 @@ export default function DeckPanel({
               <CardView 
                 cards={group.cards} 
                 mode={viewMode} 
-                onAction={(c) => onRemove(c, activeTab)} 
-                onQuantityChange={(c, amount) => onQuantityChange(c, amount, activeTab)} 
+                // ReadOnly時はアクションを渡さない、またはCardView側で制御する
+                // ここではCardViewにreadOnlyを渡す想定
+                // @ts-ignore (CardViewの型定義が更新されるまで無視)
+                readOnly={readonly}
+                onAction={readonly ? () => {} : (c) => onRemove(c, activeTab)} 
+                onQuantityChange={readonly ? undefined : (c, amount) => onQuantityChange(c, amount, activeTab)} 
                 actionType="remove" 
                 isDeckArea={true} 
                 validationErrors={validationErrors} 
                 keyCardIds={keyCardIds}
-                onToggleKeyCard={onToggleKeyCard}/>
+                onToggleKeyCard={readonly ? undefined : onToggleKeyCard}
+                />
             </div>
           ))
         ) : (
           <div className="p-8 text-center text-slate-500 text-sm">{activeTab === "main" ? "デッキにカードがありません" : "サイドボードにカードがありません"}</div>
         )}
       </div>
-      <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onImport={(main, side, name) => { onImportDeck(main, side, name); if (name) { onChangeDeckName(name); } }} language={language} selectedSet={selectedSet} />
+      {!readonly && (
+          <ImportModal isOpen={showImportModal} onClose={() => setShowImportModal(false)} onImport={(main, side, name) => { onImportDeck(main, side, name); if (name) { onChangeDeckName(name); } }} language={language} selectedSet={selectedSet} />
+      )}
     </div>
   );
 }

@@ -1,10 +1,4 @@
-export type DeckCard = {
-  // 実際のカードデータの型定義に合わせて調整してください
-  id: string;
-  name: string;
-  count: number;
-  // ...その他必要なプロパティ
-}
+import { DeckCard } from "@/types"; // ← ここが重要：既存の型定義をインポート
 
 export type TurnMove = {
   id: string;
@@ -16,8 +10,11 @@ export type TurnMove = {
 export type DeckData = {
   name: string;
   builderName?: string;
+  
+  // 独自定義ではなく、インポートしたDeckCard型を使う
   cards: DeckCard[];
   sideboard: DeckCard[];
+  
   selectedSet: string;
   language: string;
   keyCardIds: string[];
@@ -31,5 +28,5 @@ export type DeckData = {
 // サーバーからクライアントに返す際のレスポンス型
 export type DeckResponse = DeckData & {
   id: string; // FirestoreのドキュメントID
-  isOwner?: boolean; // 編集権限があるかどうか（フロントでの判定用）
+  isOwner?: boolean; // 編集権限があるかどうか
 }

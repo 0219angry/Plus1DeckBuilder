@@ -14,9 +14,10 @@ type Props<T extends Card> = {
   validationErrors?: Record<string, string>;
   keyCardIds?: string[];
   onToggleKeyCard?: (id: string) => void;
+  readOnly?: boolean; // ★追加: 閲覧専用フラグ
 };
 
-// --- カード画像プレビュー用ポータル ---
+// --- カード画像プレビュー用ポータル (変更なし) ---
 const PortalPopup = ({ 
   imageUrl, 
   position, 
@@ -52,7 +53,7 @@ const PortalPopup = ({
   );
 };
 
-// --- エラーメッセージ用ポータル ---
+// --- エラーメッセージ用ポータル (変更なし) ---
 const PortalErrorTooltip = ({ 
   message, 
   rect 
@@ -93,6 +94,7 @@ export default function CardView<T extends Card>({
   validationErrors = {},
   keyCardIds = [], 
   onToggleKeyCard,
+  readOnly = false, // デフォルトfalse
 }: Props<T>) {
 
   const getImageUrl = (card: Card) => {
@@ -125,13 +127,10 @@ export default function CardView<T extends Card>({
   const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
   const [activeError, setActiveError] = useState<{ message: string, rect: DOMRect } | null>(null);
 
-  // ★修正点1: イベントターゲットの型を HTMLElement に変更し、div要素のイベントも受け取れるようにする
   const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, imageUrl: string | undefined) => {
-    // 1. まず既存のタイマーや表示をリセット
     if (hoverTimeout.current) {
       clearTimeout(hoverTimeout.current);
     }
-    // 別のカードから移動してきた場合、即座に前のポップアップを消す
     setHoveredImageUrl(null);
     setPopupState(null);
 
@@ -139,7 +138,6 @@ export default function CardView<T extends Card>({
     
     const target = e.currentTarget;
     
-    // 2. 新しいタイマーをセット
     hoverTimeout.current = setTimeout(() => {
       const rect = target.getBoundingClientRect();
       const POPUP_WIDTH = 256;
@@ -160,7 +158,7 @@ export default function CardView<T extends Card>({
         side: side
       });
       setHoveredImageUrl(imageUrl);
-    }, 250); // 誤表示を防ぐため、ウェイトを少し調整
+    }, 250);
   };
 
   const handleMouseLeave = () => {
@@ -186,7 +184,7 @@ export default function CardView<T extends Card>({
     }
   };
 
-  // グリッドモード
+  // ■■■ グリッドモード ■■■
   if (mode === "grid") {
     return (
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 p-2 pb-5">
@@ -201,13 +199,14 @@ export default function CardView<T extends Card>({
           return (
             <div
               key={`${card.id}-${idx}`}
-              onClick={() => onAction(card)}
-              className="cursor-pointer hover:scale-105 transition-transform relative group"
-              // ★修正点2: グリッドのラッパーdivにマウスイベントハンドラを追加
+              onClick={() => !readOnly && onAction(card)} // readOnlyなら反応しない
+              className={`
+                relative group
+                ${readOnly ? "cursor-default" : "cursor-pointer hover:scale-105 transition-transform"}
+              `}
               onMouseEnter={(e) => handleMouseEnter(e, imageUrl)}
               onMouseLeave={handleMouseLeave}
             >
-              {/* 画像表示部分 */}
               <div className={`relative aspect-[5/7] rounded-md overflow-hidden shadow-sm transition-transform hover:z-10 ${error ? "ring-2 ring-red-500" : "bg-slate-800"}`}>
                 {imageUrl ? (
                   <img
@@ -222,25 +221,36 @@ export default function CardView<T extends Card>({
                   </div>
                 )}
 
-                {/* キーカードボタン */}
-                {isDeckArea && onToggleKeyCard && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleKeyCard(card.id);
-                    }}
-                    className={`absolute top-0.5 left-0.5 p-1 rounded-full shadow-sm backdrop-blur-sm transition-all z-10 ${
-                      isKeyCard 
-                        ? "bg-yellow-500/80 text-white opacity-100" 
-                        : "bg-slate-900/40 text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-slate-900/80 hover:text-white"
-                    }`}
-                    title="キーカードに設定"
-                  >
-                    <Star size={12} fill={isKeyCard ? "currentColor" : "none"} />
-                  </button>
+                {/* キーカード表示 (DeckAreaのみ) */}
+                {isDeckArea && (
+                  <>
+                    {/* ReadOnly: キーカードの場合のみ静的に表示 */}
+                    {readOnly && isKeyCard && (
+                        <div className="absolute top-0.5 left-0.5 p-1 rounded-full shadow-sm bg-yellow-500/80 text-white z-10">
+                             <Star size={12} fill="currentColor" />
+                        </div>
+                    )}
+                    {/* Editable: トグルボタンを表示 */}
+                    {!readOnly && onToggleKeyCard && (
+                        <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onToggleKeyCard(card.id);
+                        }}
+                        className={`absolute top-0.5 left-0.5 p-1 rounded-full shadow-sm backdrop-blur-sm transition-all z-10 ${
+                            isKeyCard 
+                            ? "bg-yellow-500/80 text-white opacity-100" 
+                            : "bg-slate-900/40 text-slate-300 opacity-0 group-hover:opacity-100 hover:bg-slate-900/80 hover:text-white"
+                        }`}
+                        title="キーカードに設定"
+                        >
+                        <Star size={12} fill={isKeyCard ? "currentColor" : "none"} />
+                        </button>
+                    )}
+                  </>
                 )}
 
-                {/* 数量バッジ */}
+                {/* 数量バッジ (DeckAreaのみ) */}
                 {isDeckArea && (
                   <div className="absolute bottom-0 right-0 bg-slate-900/90 text-white px-1.5 py-0.5 text-[10px] font-bold rounded-tl border-t border-l border-slate-700">
                     x{quantity}
@@ -258,8 +268,8 @@ export default function CardView<T extends Card>({
                   </div>
                 )}
 
-                {/* 検索結果（非デッキエリア）用の追加ボタンオーバーレイ */}
-                {!isDeckArea && (
+                {/* 検索結果（非デッキエリア）用の追加ボタンオーバーレイ (ReadOnly時は非表示) */}
+                {!isDeckArea && !readOnly && (
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                     {actionType === "remove" ? (
                       <MinusCircle className="text-red-400 w-8 h-8 drop-shadow-lg" />
@@ -270,8 +280,8 @@ export default function CardView<T extends Card>({
                 )}
               </div>
               
-              {/* デッキエリア用の操作ボタン（グリッド下） */}
-              {isDeckArea && quantity > 0 && (
+              {/* デッキエリア用の操作ボタン（グリッド下） - ReadOnly時は非表示 */}
+              {isDeckArea && quantity > 0 && !readOnly && (
                 <div className="mt-1 flex justify-center items-center gap-0.5 bg-slate-800/90 rounded border border-slate-700 p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
                    <button 
                      onClick={(e) => { e.stopPropagation(); handleQuantityDecrease(card, quantity); }}
@@ -303,7 +313,7 @@ export default function CardView<T extends Card>({
     );
   }
 
-  // リスト表示モード（変更なし）
+  // ■■■ リスト表示モード ■■■
   return (
     <>
       <ul className="space-y-0.5 p-2">
@@ -319,30 +329,43 @@ export default function CardView<T extends Card>({
           return (
             <li
               key={`${card.id}-${idx}`}
-              // リスト表示のマウスオーバーイベント
               onMouseEnter={(e) => handleMouseEnter(e, imageUrl)}
               onMouseLeave={handleMouseLeave}
-              onClick={() => !isDeckArea && onAction(card)}
+              // readOnlyならアクション無効、DeckAreaならボタン操作のみとするため行クリック無効
+              onClick={() => !isDeckArea && !readOnly && onAction(card)}
               className={`
-                relative flex justify-between items-center py-1 px-2 rounded border cursor-pointer group select-none transition-colors
+                relative flex justify-between items-center py-1 px-2 rounded border group select-none transition-colors
                 ${error 
-                  ? "border-red-500 bg-red-950/30 hover:bg-red-900/40"
-                  : "bg-slate-800/80 border-transparent hover:border-slate-600 hover:bg-slate-700"
+                  ? "border-red-500 bg-red-950/30"
+                  : "bg-slate-800/80 border-transparent"
                 }
+                ${!readOnly && !error ? "hover:border-slate-600 hover:bg-slate-700 cursor-pointer" : ""}
+                ${readOnly ? "cursor-default" : ""}
               `}
             >
-              {/* ... (中略: リスト表示の内容は変更なし) ... */}
-              {isDeckArea && onToggleKeyCard && (
-                <button
-                  onClick={(e) => { e.stopPropagation(); onToggleKeyCard(card.id); }}
-                  className={`p-1 rounded transition-colors shrink-0 mr-1 ${
-                    isKeyCard 
-                      ? "text-yellow-400 hover:text-yellow-300" 
-                      : "text-slate-600 hover:text-slate-400"
-                  }`}
-                >
-                  <Star size={16} fill={isKeyCard ? "currentColor" : "none"} />
-                </button>
+              {/* キーカードマーク (DeckAreaのみ) */}
+              {isDeckArea && (
+                 <>
+                    {/* ReadOnly: キーカードなら静的表示 */}
+                    {readOnly && isKeyCard && (
+                        <div className="p-1 rounded shrink-0 mr-1 text-yellow-400">
+                             <Star size={16} fill="currentColor" />
+                        </div>
+                    )}
+                    {/* Editable: トグルボタン */}
+                    {!readOnly && onToggleKeyCard && (
+                        <button
+                        onClick={(e) => { e.stopPropagation(); onToggleKeyCard(card.id); }}
+                        className={`p-1 rounded transition-colors shrink-0 mr-1 ${
+                            isKeyCard 
+                            ? "text-yellow-400 hover:text-yellow-300" 
+                            : "text-slate-600 hover:text-slate-400"
+                        }`}
+                        >
+                        <Star size={16} fill={isKeyCard ? "currentColor" : "none"} />
+                        </button>
+                    )}
+                 </>
               )}
 
               <div className="flex items-center gap-3 overflow-hidden flex-1">
@@ -380,36 +403,41 @@ export default function CardView<T extends Card>({
                   {card.set}
                 </span>
 
-                {isDeckArea ? (
-                  <div className="flex items-center bg-slate-900 rounded border border-slate-700 ml-2" onClick={(e) => e.stopPropagation()}>
-                    <button 
-                      type="button"
-                      onClick={() => handleQuantityDecrease(card, quantity)}
-                      className="p-1 hover:bg-slate-700 text-slate-400 hover:text-red-400 rounded-l transition-colors"
-                    >
-                      <Minus size={14} />
-                    </button>
-                    <div className="w-[1px] h-4 bg-slate-700"></div>
-                    <button 
-                      type="button"
-                      onClick={() => onQuantityChange?.(card, 1)}
-                      className="p-1 hover:bg-slate-700 text-slate-300 hover:text-green-400 rounded-r transition-colors"
-                    >
-                      <Plus size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <button 
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onAction(card); }}
-                    className="text-slate-500 hover:text-white p-1 transition-colors ml-1"
-                  >
-                    {actionType === "remove" ? (
-                      <MinusCircle size={18} className="text-red-400" />
-                    ) : (
-                      <PlusCircle size={18} />
-                    )}
-                  </button>
+                {/* 操作ボタン類 (ReadOnly時はすべて非表示) */}
+                {!readOnly && (
+                    <>
+                        {isDeckArea ? (
+                        <div className="flex items-center bg-slate-900 rounded border border-slate-700 ml-2" onClick={(e) => e.stopPropagation()}>
+                            <button 
+                            type="button"
+                            onClick={() => handleQuantityDecrease(card, quantity)}
+                            className="p-1 hover:bg-slate-700 text-slate-400 hover:text-red-400 rounded-l transition-colors"
+                            >
+                            <Minus size={14} />
+                            </button>
+                            <div className="w-[1px] h-4 bg-slate-700"></div>
+                            <button 
+                            type="button"
+                            onClick={() => onQuantityChange?.(card, 1)}
+                            className="p-1 hover:bg-slate-700 text-slate-300 hover:text-green-400 rounded-r transition-colors"
+                            >
+                            <Plus size={14} />
+                            </button>
+                        </div>
+                        ) : (
+                        <button 
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onAction(card); }}
+                            className="text-slate-500 hover:text-white p-1 transition-colors ml-1"
+                        >
+                            {actionType === "remove" ? (
+                            <MinusCircle size={18} className="text-red-400" />
+                            ) : (
+                            <PlusCircle size={18} />
+                            )}
+                        </button>
+                        )}
+                    </>
                 )}
               </div>
             </li>
