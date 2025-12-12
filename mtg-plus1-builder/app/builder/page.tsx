@@ -23,7 +23,7 @@ export default function BuilderPage() {
   
   // デッキ情報
   const [deckName, setDeckName] = useState("Untitled Deck");
-  const [deckComment, setDeckComment] = useState("");
+  const [builderName, setBuilderName] = useState("");
   const [deck, setDeck] = useState<DeckCard[]>([]);
   const [sideboard, setSideboard] = useState<DeckCard[]>([]);
   
@@ -112,13 +112,14 @@ export default function BuilderPage() {
           setSideboard((parsed.sideboard || []).map((c: any) => formatCardData(c) as DeckCard));
           
           setDeckName(parsed.name || "Untitled Deck");
-          setDeckComment(parsed.comment || ""); 
           if (parsed.selectedSet) setSelectedSet(parsed.selectedSet);
           if (parsed.language) setLanguage(parsed.language);
           if (parsed.keyCardIds) setKeyCardIds(parsed.keyCardIds);
 
           // ★追加: 詳細情報の読み込み
           if (parsed.archetype) setArchetype(parsed.archetype);
+          if (parsed.colors) setColors(parsed.colors);
+          if (parsed.builderName) setBuilderName(parsed.builderName);
           if (parsed.concepts) setConcepts(parsed.concepts);
           
           // 旧データ(文字列)と新データ(配列)の互換性維持
@@ -142,13 +143,14 @@ export default function BuilderPage() {
     if (deck.length > 0 || deckName !== "Untitled Deck") {
       const dataToSave = {
         name: deckName,
-        comment: deckComment,
+        builderName,
         cards: deck,
         sideboard: sideboard,
         selectedSet: selectedSet,
         language: language,
         keyCardIds: keyCardIds,
         // ★追加: 詳細情報も保存
+        colors,
         archetype,
         concepts,
         turnMoves,
@@ -156,7 +158,7 @@ export default function BuilderPage() {
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, sideboard, deckName, deckComment, selectedSet, language, keyCardIds, archetype, concepts, turnMoves]); // 依存配列に追加
+  }, [deck, sideboard, deckName,builderName, selectedSet, language, keyCardIds, colors, archetype, concepts, turnMoves]); // 依存配列に追加
 
   const executeSearch = async (queryWithOptions: string) => {
     if (!queryWithOptions) return;
@@ -546,7 +548,6 @@ export default function BuilderPage() {
     setDeck([]);
     setSideboard([]);
     setDeckName("Untitled Deck");
-    setDeckComment("");
     setKeyCardIds([]); 
   };
 
@@ -628,6 +629,7 @@ export default function BuilderPage() {
               <div className={`absolute inset-0 flex flex-col ${activeTab === "info" ? "z-10" : "hidden"}`}>
                 <InfoPanel 
                   colors={colors} setColors={setColors}
+                  builderName={builderName} setBuilderName={setBuilderName}
                   archetype={archetype} setArchetype={setArchetype}
                   concepts={concepts} setConcepts={setConcepts}
                   turnMoves={turnMoves} setTurnMoves={setTurnMoves}
@@ -650,9 +652,8 @@ export default function BuilderPage() {
               deck={deck}
               sideboard={sideboard}
               deckName={deckName}
+              builderName={builderName}
               onChangeDeckName={setDeckName}
-              deckComment={deckComment} 
-              onChangeDeckComment={setDeckComment} 
               onRemove={removeFromDeck} 
               onUnifyLanguage={unifyDeckLanguage}
               onImportDeck={handleImportDeck}
@@ -666,6 +667,7 @@ export default function BuilderPage() {
               bannedCardsMap={simpleBannedMap}
               // ★追加: 詳細情報と表示設定を渡す
               archetype={archetype}
+              colors={colors}
               concepts={concepts}
               turnMoves={turnMoves}
               showArchetype={showArchetype}
