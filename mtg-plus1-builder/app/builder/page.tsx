@@ -37,6 +37,8 @@ export default function BuilderPage() {
   // ★変更: 詳細情報のState
   const [archetype, setArchetype] = useState("");
   const [concepts, setConcepts] = useState("");
+  const [colors, setColors] = useState<string[]>([]);
+
   // 文字列ではなく構造化データに変更
   const [turnMoves, setTurnMoves] = useState<TurnMove[]>([
     { id: "1", turn: "1", action: "" },
@@ -625,6 +627,7 @@ export default function BuilderPage() {
               {/* ★追加: 4. Info Panel */}
               <div className={`absolute inset-0 flex flex-col ${activeTab === "info" ? "z-10" : "hidden"}`}>
                 <InfoPanel 
+                  colors={colors} setColors={setColors}
                   archetype={archetype} setArchetype={setArchetype}
                   concepts={concepts} setConcepts={setConcepts}
                   turnMoves={turnMoves} setTurnMoves={setTurnMoves}
