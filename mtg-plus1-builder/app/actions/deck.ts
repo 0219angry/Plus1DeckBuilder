@@ -29,23 +29,43 @@ export async function createDeck(data: DeckData) {
 
 // ■ 閲覧用データ取得 (Get)
 export async function getDeck(id: string): Promise<DeckResponse | null> {
-  const doc = await db.collection('decks').doc(id).get()
+  // ★追加: IDがない、または空文字の場合は Firestore に問い合わせず null を返す
+  if (!id || typeof id !== 'string') {
+    return null;
+  }
+  
+  // dbが初期化されていない場合のガード（前回の修正済みならOK）
+  if (!db) return null;
 
-  if (!doc.exists) return null
+  try {
+    const doc = await db.collection('decks').doc(id).get()
 
-  const data = doc.data() as any
+    if (!doc.exists) return null
 
-  // 重要: editSecret を削除してクライアントに返す
-  const { editSecret, ...safeData } = data
+    const data = doc.data() as any
 
-  return {
-    id: doc.id,
-    ...safeData,
-  } as DeckResponse
+    // editSecret を削除してクライアントに返す
+    const { editSecret, ...safeData } = data
+
+    return {
+      id: doc.id,
+      ...safeData,
+    } as DeckResponse
+  } catch (error) {
+    console.error("getDeck error:", error);
+    return null;
+  }
 }
 
 // ■ 更新保存 (Update)
 export async function updateDeck(id: string, secretKey: string, data: DeckData) {
+  // ★追加: IDチェック
+  if (!id || typeof id !== 'string') {
+    throw new Error('Invalid Deck ID');
+  }
+  
+  if (!db) throw new Error('Database connection failed');
+
   const docRef = db.collection('decks').doc(id)
   const doc = await docRef.get()
 
@@ -55,7 +75,6 @@ export async function updateDeck(id: string, secretKey: string, data: DeckData) 
 
   const currentData = doc.data()
 
-  // 認証: DBのシークレットと、URLから渡されたキーを比較
   if (currentData?.editSecret !== secretKey) {
     throw new Error('Unauthorized: Invalid edit key')
   }
@@ -65,7 +84,6 @@ export async function updateDeck(id: string, secretKey: string, data: DeckData) 
     updatedAt: new Date().toISOString(),
   }
   
-  // undefined対策
   const cleanPayload = JSON.parse(JSON.stringify(updatePayload))
 
   await docRef.update(cleanPayload)

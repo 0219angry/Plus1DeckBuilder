@@ -1,38 +1,43 @@
-import { getDeck } from "@/app/actions/deck"; // Server Action
+import { getDeck } from "@/app/actions/deck";
 import DeckViewer from "@/components/DeckViewer";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 
+// ■ 修正: params を Promise 型にする
 type PageProps = {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 };
 
-// メタデータ生成 (SNSシェア時のOGPなどで重要)
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const deck = await getDeck(params.id);
+  // ■ 修正: await する
+  const { id } = await params;
+  
+  // ガード: IDがない場合は処理しない
+  if (!id) return { title: "Deck Not Found" };
+
+  const deck = await getDeck(id);
   
   if (!deck) {
-    return {
-      title: "Deck Not Found | MtG PLUS1",
-    };
+    return { title: "Deck Not Found" };
   }
   
   return {
     title: `${deck.name} | MtG PLUS1`,
-    description: `Deck by ${deck.builderName || "Unknown"}. Format: PLUS1 (${deck.selectedSet})`,
+    description: `Deck by ${deck.builderName || "Unknown"}.`,
   };
 }
 
-// ページ本体 (Server Component)
 export default async function ViewDeckPage({ params }: PageProps) {
-  // DBからデータを取得
-  const deckData = await getDeck(params.id);
+  // ■ 修正: ここも await する
+  const { id } = await params;
 
-  // データがなければ 404 ページへ
+  if (!id) return notFound();
+
+  const deckData = await getDeck(id);
+
   if (!deckData) {
     return notFound();
   }
 
-  // 閲覧用コンポーネントを表示
   return <DeckViewer data={deckData} />;
 }
