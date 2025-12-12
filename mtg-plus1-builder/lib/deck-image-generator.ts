@@ -85,7 +85,8 @@ const drawIcon = (ctx: CanvasRenderingContext2D, type: "creature" | "spell", x: 
 
 export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<string> => {
   const { 
-    deck, sideboard, deckName, builderName, selectedSet, colors, keyCardIds,
+    deck, sideboard, deckName, selectedSet, colors, keyCardIds,
+    builderName, // ★追加: 製作者名
     archetype, concepts, turnMoves, 
     showArchetype, showConcepts, showTurnMoves 
   } = config;
@@ -117,7 +118,7 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
   const mainCount = deck.reduce((sum, c) => sum + c.quantity, 0);
   const sideCount = sideboard.reduce((sum, c) => sum + c.quantity, 0);
 
-  // アーキタイプ名生成 (色名 + 入力値)
+  // アーキタイプ名生成
   const hasArchetype = archetype && showArchetype;
   let displayArchetype = "";
   if (hasArchetype) {
@@ -162,7 +163,7 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
   const CARD_WIDTH = 180;
   const CARD_HEIGHT = 250;
   const COL_GAP = 20;
-  const HEADER_HEIGHT = 180; 
+  const HEADER_HEIGHT = 240; // ★変更: ヘッダーエリアを拡張
   const COL_HEADER_HEIGHT = 40;
   const STACK_OFFSET = 60;
   const SIDEBOARD_OFFSET = 60;
@@ -254,7 +255,7 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
   const SYMBOL_SIZE = 60;
   const TITLE_X = PADDING_X + SYMBOL_SIZE + 20;
 
-  // ヘッダー: セットシンボル
+  // --- ヘッダー（左側）：タイトル・セット情報 ---
   try {
      const setIconUrl = `https://svgs.scryfall.io/sets/${selectedSet}.svg`;
      const iconImg = await loadImage(setIconUrl);
@@ -269,42 +270,40 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
      ctx.restore();
   } catch(e) {}
 
-  // ヘッダー: テキスト
   ctx.shadowColor = "black"; ctx.shadowBlur = 10;
   ctx.fillStyle = "#ffffff"; ctx.font = "bold 42px sans-serif";
-  ctx.fillText(`${deckName}`, TITLE_X, 55); 
+  ctx.fillText(`${deckName}`, TITLE_X, 60); // Y座標調整
 
-  // ★ アーキタイプ表示 (ヘッダー内)
   if (displayArchetype) {
     ctx.fillStyle = "#60a5fa"; // blue-400
     ctx.font = "bold 26px sans-serif";
-    ctx.fillText(displayArchetype, TITLE_X, 95);
+    ctx.fillText(displayArchetype, TITLE_X, 105); // Y座標調整
   }
   
   ctx.fillStyle = "#94a3b8"; ctx.font = "bold 18px sans-serif";
   const setInfo = `(${selectedSet.toUpperCase()})  •  Main: ${mainCount} / Side: ${sideCount}`;
-  const setInfoY = displayArchetype ? 125 : 95;
+  const setInfoY = displayArchetype ? 145 : 105; // Y座標調整
   ctx.fillText(setInfo, TITLE_X, setInfoY);
 
-  // マナカーブデータの集計 (カラム分けと同じロジック: 1以下, 2, 3, 4, 5, 6以上)
+  // --- ヘッダー（右側）：グラフ & 統計情報 ---
+  
+  // 1. マナカーブ集計
   const manaCurve = [0, 0, 0, 0, 0, 0];
   deck.forEach(c => {
     if (c.type_line.includes("Land")) return;
     const cost = Math.floor(c.cmc || 0);
-    // 1マナ以下=0, 6マナ以上=5, それ以外は cost-1
     const idx = cost <= 1 ? 0 : cost >= 6 ? 5 : cost - 1;
     manaCurve[idx] += c.quantity;
   });
-  
-  const maxCount = Math.max(...manaCurve, 4); // 最小でも高さ4相当のスケール確保
-  
-  // 描画エリア設定
+  const maxCount = Math.max(...manaCurve, 4);
+
+  // 2. グラフ描画位置設定 (右寄せ)
   const graphW = 320;
   const graphH = 100;
-  const graphX = canvasWidth - PADDING_X - graphW;
+  const graphX = canvasWidth - PADDING_X - graphW; // 右端から逆算
   const graphY = PADDING_Y + 10;
-  
-  // 背景ボックス (オプション: 少し暗くして視認性アップ)
+
+  // 3. グラフ背景
   ctx.fillStyle = "rgba(15, 23, 42, 0.6)";
   ctx.beginPath();
   ctx.roundRect(graphX - 20, graphY - 10, graphW + 40, graphH + 30, 8);
@@ -312,107 +311,120 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
   ctx.strokeStyle = "rgba(148, 163, 184, 0.2)";
   ctx.stroke();
 
-  // グラフ描画
+  // 4. マナカーブ描画
   const barWidth = 32;
   const barGap = 18;
   const labels = ["1", "2", "3", "4", "5", "6+"];
   
   manaCurve.forEach((count, i) => {
     const x = graphX + i * (barWidth + barGap);
-    
-    // バーの高さ計算 (最大値に対する割合)
-    const barH = (count / maxCount) * (graphH - 20); // ラベル分20px引く
+    const barH = (count / maxCount) * (graphH - 20);
     const y = graphY + (graphH - 20) - barH;
 
-    // バー描画
     if (count > 0) {
-      // グラデーション
       const gradBar = ctx.createLinearGradient(x, y, x, y + barH);
-      gradBar.addColorStop(0, "#60a5fa"); // blue-400
-      gradBar.addColorStop(1, "#3b82f6"); // blue-500
-      
+      gradBar.addColorStop(0, "#60a5fa");
+      gradBar.addColorStop(1, "#3b82f6");
       ctx.fillStyle = gradBar;
-      ctx.beginPath();
-      ctx.roundRect(x, y, barWidth, barH, 4);
-      ctx.fill();
-
-      // 数値 (バーの上)
-      ctx.fillStyle = "#fff";
-      ctx.font = "bold 14px sans-serif";
-      ctx.textAlign = "center";
+      ctx.beginPath(); ctx.roundRect(x, y, barWidth, barH, 4); ctx.fill();
+      ctx.fillStyle = "#fff"; ctx.font = "bold 14px sans-serif"; ctx.textAlign = "center";
       ctx.fillText(`${count}`, x + barWidth / 2, y - 5);
     }
-
-    // ラベル (X軸)
-    ctx.fillStyle = "#94a3b8"; // slate-400
-    ctx.font = "bold 12px sans-serif";
-    ctx.textAlign = "center";
+    ctx.fillStyle = "#94a3b8"; ctx.font = "bold 12px sans-serif"; ctx.textAlign = "center";
     ctx.fillText(labels[i], x + barWidth / 2, graphY + graphH);
-    
-    // 0の時のベースラインマーカー
     if (count === 0) {
       ctx.fillStyle = "rgba(148, 163, 184, 0.2)";
       ctx.fillRect(x, graphY + (graphH - 20) - 2, barWidth, 2);
     }
   });
+  ctx.textAlign = "left"; // リセット
 
-  // タイトル ("Mana Curve")
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#64748b";
-  ctx.font = "12px sans-serif";
-  ctx.fillText("Mana Curve", graphX + graphW, graphY - 15);
-  ctx.textAlign = "left"; // 元に戻す
+  // 5. ★追加: タイプ構成比バー (グラフの下)
+  let countCreatures = 0; let countSpells = 0; let countLands = 0;
+  deck.forEach(c => {
+    const t = c.card_faces?.[0]?.type_line ?? c.type_line;
+    if (t.includes("Land")) countLands += c.quantity;
+    else if (t.includes("Creature")) countCreatures += c.quantity;
+    else countSpells += c.quantity;
+  });
+  const totalCards = countCreatures + countSpells + countLands;
+  
+  if (totalCards > 0) {
+    const barY = graphY + graphH + 25;
+    const barH = 12;
+    const barW = graphW;
+    const wC = (countCreatures / totalCards) * barW;
+    const wS = (countSpells / totalCards) * barW;
+    const wL = (countLands / totalCards) * barW;
+    let currentX = graphX;
+    const drawSegment = (w: number, color: string, label: string, count: number) => {
+      if (w <= 0) return;
+      ctx.fillStyle = color; ctx.fillRect(currentX, barY, w, barH);
+      if (w > 20) {
+        ctx.fillStyle = "#cbd5e1"; ctx.font = "10px sans-serif"; ctx.textAlign = "center";
+        ctx.fillText(`${label}: ${count}`, currentX + w / 2, barY + barH + 12);
+      }
+      currentX += w;
+    };
+    drawSegment(wC, "#22c55e", "Creatures", countCreatures);
+    drawSegment(wS, "#3b82f6", "Spells", countSpells);
+    drawSegment(wL, "#a8a29e", "Lands", countLands);
+    ctx.strokeStyle = "#334155"; ctx.lineWidth = 1; ctx.strokeRect(graphX, barY, barW, barH);
+    ctx.textAlign = "left"; // リセット
+  }
 
-  // 統計 (レアリティ・マナ)
-  const statsStartX = 40;
-  const statsY = 140;
+  // 6. ★変更: 統計情報 (グラフの左側に配置)
+  const manaSymbols = ["W", "U", "B", "R", "G", "C"] as const;
+  const activeManaSymbols = manaSymbols.filter(s => manaCount[s] > 0);
+  
+  // 幅計算
+  const rarityWidth = 4 * 60; 
+  const avgWidth = 120;
+  const manaSymWidth = activeManaSymbols.length * 50;
+  const totalStatsWidth = rarityWidth + avgWidth + manaSymWidth + 40; // +gap
+
+  // 開始位置 (グラフの左端 - 統計情報の幅 - 余白)
+  let statsStartX = graphX - totalStatsWidth - 40;
+  // 左に行き過ぎないように調整 (タイトルの邪魔にならない程度に)
+  if (statsStartX < TITLE_X + 200) statsStartX = TITLE_X + 200; 
+
+  const statsY = graphY + graphH - 25; // 高さはグラフの下部合わせ
+
   const drawRarityDot = (x: number, color: string, count: number, label: string) => {
      ctx.beginPath(); ctx.arc(x, statsY, 8, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
      ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 16px sans-serif"; ctx.fillText(`${count}`, x + 15, statsY + 6);
      ctx.fillStyle = "#64748b"; ctx.font = "12px sans-serif"; ctx.fillText(label, x + 15, statsY + 22);
      return 60;
   };
+
   let currentX = statsStartX;
   currentX += drawRarityDot(currentX, "#ef4444", rarityCount.mythic, "M"); 
   currentX += drawRarityDot(currentX, "#eab308", rarityCount.rare, "R");   
   currentX += drawRarityDot(currentX, "#94a3b8", rarityCount.uncommon, "U"); 
   currentX += drawRarityDot(currentX, "#0f172a", rarityCount.common, "C");   
   
-  const avgX = statsStartX + 260;
-  ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 24px sans-serif"; ctx.fillText(`${avgCmc}`, avgX, statsY + 6);
-  ctx.fillStyle = "#64748b"; ctx.font = "12px sans-serif"; ctx.fillText("Avg. CMC", avgX, statsY + 22);
+  // 区切り線
+  ctx.strokeStyle = "#334155"; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(currentX + 10, statsY - 20); ctx.lineTo(currentX + 10, statsY + 20); ctx.stroke();
+  currentX += 40;
+
+  // Avg CMC
+  ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 24px sans-serif"; ctx.fillText(`${avgCmc}`, currentX, statsY + 6);
+  ctx.fillStyle = "#64748b"; ctx.font = "12px sans-serif"; ctx.fillText("Avg. CMC", currentX, statsY + 22);
+  currentX += 80;
 
   // マナシンボル
-  const manaX = avgX + 120;
-  const manaSymbols = ["W", "U", "B", "R", "G", "C"] as const;
-  let mOffset = 0;
-  const loadSymbolPromises = manaSymbols.map(async (sym) => {
-    if (manaCount[sym] > 0) {
+  for (const sym of activeManaSymbols) {
       try {
-        const url = `https://svgs.scryfall.io/card-symbols/${sym}.svg`;
-        const img = await loadImage(url);
-        const size = 20;
-        // 注意: 非同期なので描画順序が保証されない。ここでは簡易的に即時描画するが、厳密にはPromise.all後に描画すべき
-        // 修正: 座標を確定させて描画
-        const xPos = manaX + mOffset - 10; // ここはmOffsetがクロージャでキャプチャされない問題があるため、本来はループ外でロードすべき
+         const url = `https://svgs.scryfall.io/card-symbols/${sym}.svg`;
+         const img = await loadImage(url);
+         const size = 20;
+         ctx.drawImage(img, currentX - 10, statsY - 15, size, size);
+         ctx.textAlign = "left";
+         ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 14px sans-serif";
+         ctx.fillText(`${manaCount[sym]}`, currentX + 14, statsY + 5);
+         currentX += 50;
       } catch(e) {}
-    }
-  });
-  // 修正: マナシンボル描画を同期的フローにする
-  for (const sym of manaSymbols) {
-      if (manaCount[sym] > 0) {
-          try {
-             const url = `https://svgs.scryfall.io/card-symbols/${sym}.svg`;
-             const img = await loadImage(url);
-             const size = 20;
-             ctx.drawImage(img, manaX + mOffset - 10, statsY - 10, size, size);
-             ctx.textAlign = "left";
-             ctx.fillStyle = "#cbd5e1";
-             ctx.font = "bold 14px sans-serif";
-             ctx.fillText(`${manaCount[sym]}`, manaX + mOffset + 14, statsY + 5);
-             mOffset += 50;
-          } catch(e) {}
-      }
   }
 
   // メインデッキ描画
