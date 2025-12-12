@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { DeckResponse } from "@/types/deck"; // または DeckData
@@ -30,8 +31,20 @@ export default function DeckViewer({ data }: DeckViewerProps) {
       
       {/* ヘッダー: タイトルと基本情報のみ表示 */}
       <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0">
-        <h1 className="text-lg font-bold text-blue-400">MtG PLUS1</h1>
+        
+        {/* ロゴ + タイトル (リンク化) */}
+        <Link 
+          href="/" 
+          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+        >
+          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
+            +1
+          </div>
+          <h1 className="text-lg font-bold text-blue-400">MtG PLUS1</h1>
+        </Link>
+
         <span className="text-slate-700">|</span>
+        
         <div className="flex flex-col justify-center">
             <h2 className="text-white font-bold leading-tight">{data.name}</h2>
             <div className="flex gap-2 text-[10px] text-slate-500">
