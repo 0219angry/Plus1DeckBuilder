@@ -18,6 +18,7 @@ export default function UserMenu() {
 
   // ログイン済みの場合
   if (user) {
+    console.log(user);
     return (
       <div className="flex items-center gap-3 animate-in fade-in duration-300">
         {/* マイページへのリンク */}
