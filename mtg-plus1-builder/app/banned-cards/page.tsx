@@ -227,14 +227,14 @@ export default function BannedCardsPage() {
                               {card.reason}
                             </div>
                           )}
-                          <Link
+                          <a
                             href={`https://scryfall.com/search?q=${encodeURIComponent(card.name)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="mt-3 text-[10px] text-blue-400 hover:text-blue-300 flex items-center gap-1 w-fit"
                           >
                             Scryfall <ExternalLink size={10} />
-                          </Link>
+                          </a>
                         </div>
                       </div>
                     ))}
