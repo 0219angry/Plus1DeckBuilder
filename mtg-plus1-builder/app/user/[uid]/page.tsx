@@ -19,8 +19,9 @@ import { Metadata } from "next";
 // ---------------------------------------------------------
 // 1. 動的メタデータ生成（OGPやブラウザタブのタイトル用）
 // ---------------------------------------------------------
-export async function generateMetadata({ params }: { params: { uid: string } }): Promise<Metadata> {
-  const realUid = await getUidByCustomId(params.uid);
+export async function generateMetadata({ params }: { params: Promise<{ uid: string }> }): Promise<Metadata> {
+  const { uid } = await params;
+  const realUid = await getUidByCustomId(uid);
   
   // ユーザーが見つからない場合
   if (!realUid) {
@@ -78,7 +79,7 @@ export default async function PublicUserPage({ params }: { params: Promise<{ uid
   const displayName = profile?.displayName || deckBuilderName || profile?.customId || "Unknown User";
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-200">
+    <div className="min-h-screen bg-slate-950 text-slate-200">
       
       {/* ヘッダー */}
       <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-md sticky top-0 z-10">
