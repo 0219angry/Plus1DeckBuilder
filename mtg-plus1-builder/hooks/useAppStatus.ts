@@ -85,7 +85,9 @@ export function useAppStatus() {
            if ((window as any).__initial_auth_token) {
               await signInWithCustomToken(auth, (window as any).__initial_auth_token);
            } else {
-              await signInAnonymously(auth);
+              if (!auth.currentUser) {
+                await signInAnonymously(auth);
+              }
            }
         }
 
