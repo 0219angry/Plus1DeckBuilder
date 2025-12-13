@@ -34,20 +34,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const auth = getAuth(app);
-    let unsubscribe = () => {};
 
-    (async () => {
-      try {
-        await setPersistence(auth, browserLocalPersistence);
-      } catch (error) {
-        console.error("Persistence error:", error);
-      }
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
 
-      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-        setUser(currentUser);
-        setLoading(false);
-      });
-    })();
+    setPersistence(auth, browserLocalPersistence).catch((e) => {
+      console.error("Persistence error:", e);
+      // 失敗しても監視は続ける（loadingはここでfalseにしない）
+    });
 
     return () => unsubscribe();
   }, []);
