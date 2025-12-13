@@ -102,7 +102,7 @@ export default function MyDecksPage() {
 
   return (
     // ★統一ポイント1: 全体の背景グラデーション
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-slate-950 to-black text-slate-200 font-sans">
+    <div className="min-h-screen bg-slate-950 from-slate-900 via-slate-950 to-black text-slate-200 font-sans">
       
       {/* モーダル */}
       {user && (
