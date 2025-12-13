@@ -1,9 +1,9 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
+  --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 2, 6, 23; /* slate-950 */
-  --foreground: #171717;
+  --background-end-rgb: 0, 0, 0;
 }
 
 ::-webkit-scrollbar {
