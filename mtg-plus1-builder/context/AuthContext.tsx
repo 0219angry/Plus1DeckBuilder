@@ -32,13 +32,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const auth = getAuth(app);
+
   useEffect(() => {
-    const auth = getAuth(app);
     let unsubscribe = () => {};
 
     (async () => {
       try {
         await setPersistence(auth, browserLocalPersistence);
+
+        // ページ遷移時などにコンポーネントが再マウントされた場合でも
+        // Firebaseが保持している現在のユーザーを即座に反映させる
+        setUser(auth.currentUser);
       } catch (error) {
         console.error("Persistence error:", error);
       }
@@ -50,10 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
 
     return () => unsubscribe();
-  }, []);
+  }, [auth]);
 
   const login = async () => {
-    const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
     try {
       // ★念のため、ログイン時にも永続化をセットしてからポップアップを開く
@@ -66,7 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      const auth = getAuth(app);
       await signOut(auth);
     } catch (error) {
       console.error("Logout failed:", error);
