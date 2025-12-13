@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Layers, Image as ImageIcon, Globe, Ban, AlertTriangle, Map } from "lucide-react"; // Mapアイコン追加
 import Footer from "@/components/Footer";
 import ExpansionMarquee from "@/components/ExpansionMarquee";
+import UserMenu from "@/components/UserMenu";
 
 export default function LandingPage() {
   return (
@@ -33,6 +34,7 @@ export default function LandingPage() {
           >
             デッキ作成 <ArrowRight size={16} />
           </Link>
+          <UserMenu />
         </nav>
       </header>
 

@@ -16,6 +16,7 @@ import ShareModal from "@/components/ShareModal";
 import AnalysisPanel from "@/components/AnalysisPanel"; 
 import SampleHandPanel from "@/components/SampleHandPanel"; 
 import HelpModal from "@/components/BuilderHelpModal";
+import UserMenu from "@/components/UserMenu";
 import { useAllowedSets } from "@/hooks/useAllowedSets";
 import { useBannedCards } from "@/hooks/useBannedCards";
 
@@ -676,6 +677,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
                     </>
                 )}
             </button>
+            <UserMenu />
         </div>
       </header>
 
