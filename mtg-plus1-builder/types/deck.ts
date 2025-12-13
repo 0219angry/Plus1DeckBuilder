@@ -22,6 +22,7 @@ export type DeckData = {
   archetype?: string;
   concepts?: string;
   turnMoves: TurnMove[];
+  userId?: string;
   updatedAt: string; // ISO String
 }
 
