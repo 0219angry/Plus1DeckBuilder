@@ -12,15 +12,17 @@ type Props = {
   uid: string;
   initialProfile: UserProfile | null;
   currentCustomId?: string;
+  currentUserPhotoURL?: string | null;
 };
 
-export default function ProfileSettingsModal({ isOpen, onClose, uid, initialProfile, currentCustomId }: Props) {
+export default function ProfileSettingsModal({ isOpen, onClose, uid, initialProfile, currentCustomId, currentUserPhotoURL }: Props) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     customId: currentCustomId || "",
     twitterUrl: initialProfile?.twitterUrl || "",
     noteUrl: initialProfile?.noteUrl || "",
     bio: initialProfile?.bio || "",
+    photoURL: currentUserPhotoURL || "",
   });
 
   if (!isOpen) return null;
