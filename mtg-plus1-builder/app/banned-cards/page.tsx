@@ -227,7 +227,7 @@ export default function BannedCardsPage() {
                               {card.reason}
                             </div>
                           )}
-                          <a 
+                          <a
                             href={`https://scryfall.com/search?q=${encodeURIComponent(card.name)}`}
                             target="_blank"
                             rel="noopener noreferrer"
