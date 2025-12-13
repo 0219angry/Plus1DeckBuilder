@@ -7,7 +7,7 @@ import Link from "next/link";
 export default function UserMenu() {
   const { user, loading, login, logout } = useAuth();
 
-  // 認証状態の確認中はローディング表示（または何も表示しない）
+  // 認証状態の確認中はローディング表示
   if (loading) {
     return (
       <div className="w-8 h-8 flex items-center justify-center text-slate-600">
@@ -22,7 +22,7 @@ export default function UserMenu() {
       <div className="flex items-center gap-3 animate-in fade-in duration-300">
         {/* マイページへのリンク */}
         <Link 
-          href="/mydecks" 
+          href="/my-decks" // ※パス修正: /mydecks -> /my-decks (ファイル名に合わせてください)
           className="flex items-center gap-2 group"
           title="マイページ (作成したデッキ一覧)"
         >
@@ -38,13 +38,13 @@ export default function UserMenu() {
                 <UserIcon size={16} className="text-slate-400 group-hover:text-blue-400" />
               </div>
             )}
-            {/* オンラインインジケータ（装飾） */}
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 border-2 border-slate-950 rounded-full"></div>
           </div>
           
           <div className="hidden sm:flex flex-col items-start">
             <span className="text-xs font-bold text-slate-300 group-hover:text-white transition-colors max-w-[100px] truncate">
-              {user.displayName || "No Name"}
+              {/* 名前がない場合はメールアドレスを表示 */}
+              {user.displayName || user.email || "User"}
             </span>
             <span className="text-[10px] text-slate-500 flex items-center gap-1">
               <LayoutGrid size={10} /> My Decks
@@ -64,14 +64,28 @@ export default function UserMenu() {
     );
   }
 
-  // 未ログインの場合
+  // ★変更: 未ログインの場合（ゲスト表示を追加）
   return (
-    <button
-      onClick={login}
-      className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold text-sm transition-all shadow-lg shadow-blue-900/20 hover:scale-105 active:scale-95"
-    >
-      <LogIn size={16} />
-      <span>Login</span>
-    </button>
+    <div className="flex items-center gap-3 animate-in fade-in duration-300">
+      {/* ゲストステータス表示 */}
+      <div className="flex items-center gap-2 opacity-60 select-none">
+        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center border border-slate-700">
+          <UserIcon size={16} className="text-slate-500" />
+        </div>
+        <div className="hidden sm:flex flex-col items-start">
+          <span className="text-xs font-bold text-slate-400">Guest</span>
+          <span className="text-[10px] text-slate-600">未ログイン</span>
+        </div>
+      </div>
+
+      {/* ログインボタン */}
+      <button
+        onClick={login}
+        className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold text-sm transition-all shadow-lg shadow-blue-900/20 hover:scale-105 active:scale-95"
+      >
+        <LogIn size={16} />
+        <span>Login</span>
+      </button>
+    </div>
   );
 }
