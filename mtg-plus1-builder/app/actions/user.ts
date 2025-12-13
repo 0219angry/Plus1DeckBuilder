@@ -7,6 +7,7 @@ export type UserProfile = {
   uid: string;
   customId?: string;
   displayName?: string;
+  photoURL?: string;
   twitterUrl?: string;
   noteUrl?: string;
   bio?: string; // 一言コメント
@@ -82,7 +83,7 @@ export async function updateUserProfile(uid: string, data: Partial<UserProfile>)
     // customIdがある場合は usernames コレクションも更新が必要ですが、
     // 前回の claimCustomId 関数で管理しているためここでは省略します
     
-    revalidatePath('/my-decks');
+    revalidatePath('/mydecks');
     revalidatePath(`/user/${uid}`); // 自分のページ
     return { success: true };
   } catch (error) {

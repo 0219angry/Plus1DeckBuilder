@@ -112,6 +112,7 @@ export default function MyDecksPage() {
           uid={user.uid}
           initialProfile={profile}
           currentCustomId={profile?.customId}
+          currentUserPhotoURL={user.photoURL}
         />
       )}
 
