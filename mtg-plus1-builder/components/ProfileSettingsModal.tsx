@@ -77,7 +77,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, uid, initialProf
           {/* Twitter */}
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
-              <XLogo /> Twitter / X URL
+              <XLogo size={16} /> Twitter / X URL
             </label>
             <input 
               type="text" 
@@ -91,7 +91,7 @@ export default function ProfileSettingsModal({ isOpen, onClose, uid, initialProf
           {/* Note */}
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
-              <NoteLogo /> Note URL
+              <NoteLogo size={16} /> Note URL
             </label>
             <input 
               type="text" 
