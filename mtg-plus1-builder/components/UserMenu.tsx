@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import { LogIn, LogOut, User as UserIcon, Loader2, LayoutGrid } from "lucide-react";
 import Link from "next/link";
 
@@ -22,7 +22,7 @@ export default function UserMenu() {
       <div className="flex items-center gap-3 animate-in fade-in duration-300">
         {/* マイページへのリンク */}
         <Link 
-          href="/my-decks" 
+          href="/mydecks" 
           className="flex items-center gap-2 group"
           title="マイページ (作成したデッキ一覧)"
         >

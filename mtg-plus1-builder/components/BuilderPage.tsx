@@ -19,7 +19,7 @@ import HelpModal from "@/components/BuilderHelpModal";
 import UserMenu from "@/components/UserMenu";
 import { useAllowedSets } from "@/hooks/useAllowedSets";
 import { useBannedCards } from "@/hooks/useBannedCards";
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 
 import { Search as SearchIcon, BarChart3, Play, Info, CloudUpload, Save, Share2, HelpCircle } from "lucide-react";
 

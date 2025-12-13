@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuth } from "@/lib/auth";
+import { useAuth } from "@/context/AuthContext";
 import { getMyDecks, deleteMyDeck } from "@/app/actions/deck";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -122,7 +122,7 @@ export default function MyDecksPage() {
             <h2 className="text-xl font-bold text-white mb-2">デッキがありません</h2>
             <p className="text-slate-500 mb-6">まだ保存されたデッキがありません。<br/>新しいデッキを作成してみましょう！</p>
             <Link 
-              href="/" 
+              href="/builder" 
               className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold transition-colors"
             >
               <Plus size={20} /> デッキを作る
