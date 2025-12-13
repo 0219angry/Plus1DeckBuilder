@@ -34,22 +34,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const auth = getAuth(app);
-    
-    // ★ここが重要：永続化設定を明示的に行う
-    // これにより、ページ遷移やリロードでもログイン状態が維持されます
-    setPersistence(auth, browserLocalPersistence)
-      .then(() => {
-        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-          setUser(currentUser);
-          setLoading(false);
-        });
-        return () => unsubscribe();
-      })
-      .catch((error) => {
+    let unsubscribe = () => {};
+
+    (async () => {
+      try {
+        await setPersistence(auth, browserLocalPersistence);
+      } catch (error) {
         console.error("Persistence error:", error);
+      }
+
+      unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        setUser(currentUser);
         setLoading(false);
       });
-      
+    })();
+
+    return () => unsubscribe();
   }, []);
 
   const login = async () => {
