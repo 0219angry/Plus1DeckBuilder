@@ -1,7 +1,17 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { getAuth, onAuthStateChanged, User, GoogleAuthProvider, signInWithPopup, signOut } from "firebase/auth";
+// ★ setPersistence, browserLocalPersistence を追加
+import { 
+  getAuth, 
+  onAuthStateChanged, 
+  User, 
+  GoogleAuthProvider, 
+  signInWithPopup, 
+  signOut,
+  setPersistence,           // 追加
+  browserLocalPersistence   // 追加
+} from "firebase/auth";
 import { app } from "@/lib/firebase";
 
 type AuthContextType = {
@@ -24,33 +34,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const auth = getAuth(app);
-    // 認証状態の監視を開始
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false); // 初回チェックが終わったらローディング解除
-    });
-    return () => unsubscribe();
+    
+    // ★ここが重要：永続化設定を明示的に行う
+    // これにより、ページ遷移やリロードでもログイン状態が維持されます
+    setPersistence(auth, browserLocalPersistence)
+      .then(() => {
+        const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+          setUser(currentUser);
+          setLoading(false);
+        });
+        return () => unsubscribe();
+      })
+      .catch((error) => {
+        console.error("Persistence error:", error);
+        setLoading(false);
+      });
+      
   }, []);
 
   const login = async () => {
     const auth = getAuth(app);
     const provider = new GoogleAuthProvider();
     try {
+      // ★念のため、ログイン時にも永続化をセットしてからポップアップを開く
+      await setPersistence(auth, browserLocalPersistence);
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error("Login failed", error);
     }
   };
 
-const logout = async () => {
+  const logout = async () => {
     try {
       const auth = getAuth(app);
       await signOut(auth);
-      console.log("ログアウト成功");
-      // 必要であればトップページへ強制リダイレクト
-      // window.location.href = "/"; 
     } catch (error) {
-      console.error("ログアウト失敗:", error);
+      console.error("Logout failed:", error);
     }
   };
 
@@ -61,5 +80,4 @@ const logout = async () => {
   );
 }
 
-// カスタムフックとしてエクスポート（これを各コンポーネントで使う）
 export const useAuth = () => useContext(AuthContext);
