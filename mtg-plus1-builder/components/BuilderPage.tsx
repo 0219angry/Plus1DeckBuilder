@@ -15,10 +15,11 @@ import Footer from "@/components/Footer";
 import ShareModal from "@/components/ShareModal";
 import AnalysisPanel from "@/components/AnalysisPanel"; 
 import SampleHandPanel from "@/components/SampleHandPanel"; 
+import HelpModal from "@/components/BuilderHelpModal";
 import { useAllowedSets } from "@/hooks/useAllowedSets";
 import { useBannedCards } from "@/hooks/useBannedCards";
 
-import { Search as SearchIcon, BarChart3, Play, Info, CloudUpload, Save, Share2 } from "lucide-react";
+import { Search as SearchIcon, BarChart3, Play, Info, CloudUpload, Save, Share2, HelpCircle } from "lucide-react";
 
 // Props定義: 編集モード時はこれらの値が渡される
 type BuilderPageProps = {
@@ -49,6 +50,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
   const [keyCardIds, setKeyCardIds] = useState<string[]>(initialData?.keyCardIds || []);
 
   const [activeTab, setActiveTab] = useState<"search" | "analysis" | "sample" | "info">("search");
+  const [isHelpOpen, setIsHelpOpen] = useState(false);
 
   // 詳細情報
   const [archetype, setArchetype] = useState(initialData?.archetype || "");
@@ -635,6 +637,13 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
 
         {/* 保存アクションエリア */}
         <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsHelpOpen(true)}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
+              title="使い方を見る"
+            >
+              <HelpCircle size={20} />
+            </button>
             {/* 共有ボタン (保存済みの場合のみ表示) */}
             {deckId && (
               <button
@@ -781,6 +790,8 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           </Panel>
         </PanelGroup>
       </div>
+
+      <HelpModal isOpen={isHelpOpen} onClose={() => setIsHelpOpen(false)} />
 
       {deckId && (
         <ShareModal 
