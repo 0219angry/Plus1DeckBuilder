@@ -42,9 +42,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = async () => {
-    const auth = getAuth(app);
-    await signOut(auth);
+const logout = async () => {
+    try {
+      const auth = getAuth(app);
+      await signOut(auth);
+      console.log("ログアウト成功");
+      // 必要であればトップページへ強制リダイレクト
+      // window.location.href = "/"; 
+    } catch (error) {
+      console.error("ログアウト失敗:", error);
+    }
   };
 
   return (

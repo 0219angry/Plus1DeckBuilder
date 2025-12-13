@@ -22,7 +22,7 @@ export default function UserMenu() {
       <div className="flex items-center gap-3 animate-in fade-in duration-300">
         {/* マイページへのリンク */}
         <Link 
-          href="/my-decks" // ※パス修正: /mydecks -> /my-decks (ファイル名に合わせてください)
+          href="/mydecks" 
           className="flex items-center gap-2 group"
           title="マイページ (作成したデッキ一覧)"
         >
