@@ -44,9 +44,10 @@ export const dynamic = 'force-dynamic';
 // ---------------------------------------------------------
 // 2. メインコンポーネント
 // ---------------------------------------------------------
-export default async function PublicUserPage({ params }: { params: { uid: string } }) {
+export default async function PublicUserPage({ params }: { params: Promise<{ uid: string }> }) {
+  const { uid } = await params;
   // URLパラメータ（IDまたはカスタムID）から、本当のUIDを特定
-  const realUid = await getUidByCustomId(params.uid);
+  const realUid = await getUidByCustomId(uid);
 
   // ユーザーが存在しない場合の表示
   if (!realUid) {

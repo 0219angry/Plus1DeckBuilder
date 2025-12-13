@@ -127,7 +127,7 @@ export default function MyDecksPage() {
           </div>
           
           <Link 
-            href="/" 
+            href="/builder" 
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold text-sm transition-all shadow-lg shadow-blue-900/20 hover:shadow-blue-900/40"
           >
             <Plus size={16} /> <span className="hidden sm:inline">New Deck</span>
