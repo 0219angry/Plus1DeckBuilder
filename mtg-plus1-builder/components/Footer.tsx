@@ -34,14 +34,14 @@ export default function Footer() {
         </p>
         <p>
           Card data and images provided by{" "}
-          <a 
-            href="https://scryfall.com" 
-            target="_blank" 
-            rel="noopener noreferrer" 
+          <Link
+            href="https://scryfall.com"
+            target="_blank"
+            rel="noopener noreferrer"
             className="underline hover:text-slate-400 transition-colors"
           >
             Scryfall
-          </a>
+          </Link>
           .
         </p>
         <p className="mt-2 text-slate-600">
