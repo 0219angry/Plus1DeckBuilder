@@ -190,6 +190,15 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
     }
   }, [deck, sideboard, deckName, builderName, selectedSet, language, keyCardIds, colors, archetype, concepts, turnMoves, deckId]);
 
+  useEffect(() => {
+    // 条件:
+    // 1. ユーザーがログインしていて、名前(displayName)がある
+    // 2. まだ製作者名が入力されていない（空欄である）
+    //    ※これがないと、ユーザーが手動で書き換えた名前を勝手に戻してしまいます
+    if (user?.displayName && builderName === "") {
+      setBuilderName(user.displayName);
+    }
+  }, [user, builderName]);
 
   // --- Server Actions: クラウド保存 ---
   const handleCloudSave = async () => {
@@ -218,7 +227,8 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
         archetype,
         concepts,
         turnMoves,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        userId: user?.uid || undefined,
     };
 
     try {

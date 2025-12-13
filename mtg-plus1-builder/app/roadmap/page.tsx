@@ -50,9 +50,9 @@ export default function RoadmapPage() {
               お気軽に開発者までメッセージをお送りください！
             </p>
           </div>
-          <a 
-            href="https://discord.com/users/687118167503667213" 
-            target="_blank" 
+          <a
+            href="https://discord.com/users/687118167503667213"
+            target="_blank"
             rel="noopener noreferrer"
             className="whitespace-nowrap px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-full transition-colors shadow-lg shadow-indigo-900/50 flex items-center gap-2"
           >

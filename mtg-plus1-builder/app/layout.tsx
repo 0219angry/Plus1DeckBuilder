@@ -5,12 +5,11 @@ import { AuthProvider } from "@/context/AuthContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
-// ここでページ名（タイトル）や説明を設定します
 export const metadata: Metadata = {
   title: "PLUS1デッキビルダー",
-  description: "Magic: The Gathering Deck Builder with +1 Expantion Rule",
+  description: "Magic: The Gathering Deck Builder with +1 Expansion Rule",
   icons: {
-    icon: "/favicon.ico", // ファビコンがある場合
+    icon: "/favicon.ico",
   },
 };
 
@@ -21,11 +20,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ja">
-      <AuthProvider>
-        <body className={`${inter.className} bg-slate-950 text-slate-50 antialiased`}>
+      <body className={`${inter.className} bg-slate-950 text-slate-50 antialiased`}>
+        {/* ★変更点: AuthProviderをbodyの中に移動 */}
+        <AuthProvider>
           {children}
-        </body>
-      </AuthProvider>
+        </AuthProvider>
+      </body>
     </html>
   );
 }
