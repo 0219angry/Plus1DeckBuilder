@@ -227,7 +227,8 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
         archetype,
         concepts,
         turnMoves,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        userId: user?.uid || undefined,
     };
 
     try {

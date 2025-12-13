@@ -155,3 +155,33 @@ export async function deleteMyDeck(deckId: string, userId: string) {
     return { success: false };
   }
 }
+
+// 特定ユーザーの公開デッキ一覧を取得（editSecretは返さない）
+export async function getUserPublicDecks(userId: string) {
+  if (!userId) return [];
+
+  try {
+    const snapshot = await db.collection('decks')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .limit(50) // 大量にあると重いので制限
+      .get();
+
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name || "Untitled",
+        selectedSet: data.selectedSet || "-",
+        language: data.language || "-",
+        createdAt: data.createdAt,
+        builderName: data.builderName || "Unknown Builder",
+        colors: data.colors || [],
+        // ★重要: editSecret は返さない！
+      };
+    });
+  } catch (error) {
+    console.error("Public Fetch Error:", error);
+    return [];
+  }
+}
