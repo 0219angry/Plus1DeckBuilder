@@ -15,6 +15,7 @@ export async function createDeck(data: DeckData) {
   // Firestoreに保存するオブジェクト
   const firestoreData = {
     ...data, // LocalStorageの中身を全て展開
+    userId: data.userId || null,
     cards: minifiedCards,
     sideboard: minifiedSideboard,
     editSecret, // 閲覧者には見せない重要データ
@@ -81,8 +82,12 @@ export async function updateDeck(id: string, secretKey: string, data: DeckData) 
 
   const currentData = doc.data()
 
-  if (currentData?.editSecret !== secretKey) {
-    throw new Error('Unauthorized: Invalid edit key')
+  const isKeyMatch = secretKey && currentData?.editSecret === secretKey;
+
+  const isOwner = data.userId && currentData?.userId === data.userId;
+
+  if (!isKeyMatch && !isOwner) {
+    throw new Error('Unauthorized: 編集権限がありません')
   }
 
   const minifiedCards = minifyDeckCards(data.cards);
@@ -100,4 +105,53 @@ export async function updateDeck(id: string, secretKey: string, data: DeckData) 
   await docRef.update(cleanPayload)
   
   return { success: true }
+}
+
+export async function getMyDecks(userId: string) {
+  if (!userId) return [];
+  
+  try {
+    const snapshot = await db.collection('decks')
+      .where('userId', '==', userId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        name: data.name || "Untitled",
+        selectedSet: data.selectedSet,
+        language: data.language,
+        createdAt: data.createdAt,
+        // 色情報があれば取得
+        colors: data.colors || [], 
+        // 編集キーも返す（編集ボタン用）
+        editSecret: data.editSecret, 
+      };
+    });
+  } catch (error) {
+    console.error("Fetch Error:", error);
+    // ※インデックス未作成エラーの場合があるため、コンソールを確認してください
+    return [];
+  }
+}
+
+// デッキ削除関数（自分のデッキ削除用）
+export async function deleteMyDeck(deckId: string, userId: string) {
+  try {
+    const docRef = db.collection('decks').doc(deckId);
+    const doc = await docRef.get();
+    
+    // 所有権チェック
+    if (doc.data()?.userId !== userId) {
+      throw new Error("Unauthorized");
+    }
+
+    await docRef.delete();
+    return { success: true };
+  } catch (error) {
+    console.error("Delete Error:", error);
+    return { success: false };
+  }
 }

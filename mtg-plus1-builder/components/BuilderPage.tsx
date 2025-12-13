@@ -19,6 +19,7 @@ import HelpModal from "@/components/BuilderHelpModal";
 import UserMenu from "@/components/UserMenu";
 import { useAllowedSets } from "@/hooks/useAllowedSets";
 import { useBannedCards } from "@/hooks/useBannedCards";
+import { useAuth } from "@/lib/auth";
 
 import { Search as SearchIcon, BarChart3, Play, Info, CloudUpload, Save, Share2, HelpCircle } from "lucide-react";
 
@@ -31,6 +32,7 @@ type BuilderPageProps = {
 
 export default function BuilderPage({ initialData, deckId, editKey }: BuilderPageProps) {
   const router = useRouter();
+  const { user } = useAuth();
 
   // --- State定義 (初期値をPropsから設定可能に) ---
   const [selectedSet, setSelectedSet] = useState(initialData?.selectedSet || "fdn");
@@ -172,6 +174,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
       const dataToSave = {
         name: deckName,
         builderName,
+        userId: user?.uid,
         cards: deck,
         sideboard: sideboard,
         selectedSet: selectedSet,
