@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { DeckResponse } from "@/types/deck"; // または DeckData
+import { useAuth } from "@/context/AuthContext";
 
 // 各パネルコンポーネント
 import DeckPanel from "@/components/DeckPanel";
@@ -13,7 +14,7 @@ import SampleHandPanel from "@/components/SampleHandPanel";
 import Footer from "@/components/Footer";
 
 // アイコン
-import { BarChart3, Play, Info } from "lucide-react";
+import { BarChart3, Play, Info, Globe2, Link2, Lock } from "lucide-react";
 
 type DeckViewerProps = {
   data: DeckResponse;
@@ -22,6 +23,64 @@ type DeckViewerProps = {
 export default function DeckViewer({ data }: DeckViewerProps) {
   // 閲覧モードなので、左パネルの表示切り替え用Stateのみ持つ
   const [activeTab, setActiveTab] = useState<"info" | "analysis" | "sample">("info");
+  const { user, loading } = useAuth();
+
+  const visibility = data.visibility || 'public';
+  const isOwner = user?.uid && data.userId === user.uid;
+  const isPrivate = visibility === 'private';
+
+  const visibilityBadge = {
+    label:
+      visibility === 'private'
+        ? '非公開'
+        : visibility === 'limit'
+        ? '限定公開'
+        : '公開',
+    description:
+      visibility === 'private'
+        ? 'あなたのみ閲覧できます'
+        : visibility === 'limit'
+        ? 'URLを知っている人のみ閲覧可能'
+        : 'ユーザーページに掲載されます',
+    className:
+      visibility === 'private'
+        ? 'bg-red-950/40 border-red-900 text-red-200'
+        : visibility === 'limit'
+        ? 'bg-amber-950/30 border-amber-800 text-amber-200'
+        : 'bg-emerald-950/30 border-emerald-800 text-emerald-200',
+    icon:
+      visibility === 'private'
+        ? <Lock size={12} />
+        : visibility === 'limit'
+        ? <Link2 size={12} />
+        : <Globe2 size={12} />,
+  };
+
+  if (isPrivate && loading) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center">
+        <div className="text-sm text-slate-400">認証情報を確認しています...</div>
+      </main>
+    );
+  }
+
+  if (isPrivate && !isOwner) {
+    return (
+      <main className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center p-6">
+        <div className="max-w-md text-center space-y-4">
+          <div className="text-2xl font-bold text-white">このデッキは非公開です</div>
+          <p className="text-sm text-slate-400">
+            公開範囲が「非公開」に設定されています。デッキの作者のみ閲覧できます。
+          </p>
+          <div className="flex justify-center gap-3 text-sm">
+            <Link href="/" className="px-4 py-2 rounded bg-slate-800 hover:bg-slate-700 text-white font-bold transition-colors">
+              トップに戻る
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   // ダミー関数（readOnlyモードのパネルに渡すため）
   const noop = () => {};
@@ -57,6 +116,18 @@ export default function DeckViewer({ data }: DeckViewerProps) {
                 <span>
                     by {data.builderName || "Unknown"}
                 </span>
+            </div>
+            <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded border ${visibilityBadge.className}`}>
+                {visibilityBadge.icon}
+                {visibilityBadge.label}
+              </span>
+              <span className="text-slate-500 hidden sm:inline">{visibilityBadge.description}</span>
+              {isOwner && (
+                <span className="text-blue-300 text-[10px] bg-blue-900/30 border border-blue-800 px-2 py-0.5 rounded">
+                  あなたのデッキ
+                </span>
+              )}
             </div>
         </div>
       </header>

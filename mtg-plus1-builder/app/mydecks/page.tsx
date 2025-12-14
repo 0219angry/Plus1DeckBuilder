@@ -35,6 +35,7 @@ type MyDeck = {
   colors: string[];
   editSecret?: string;
   archetype: string;
+  visibility?: 'private' | 'limit' | 'public';
 };
 
 export default function MyDecksPage() {

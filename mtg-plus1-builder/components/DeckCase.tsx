@@ -11,6 +11,7 @@ type DeckProps = {
   createdAt: string;
   colors: string[]; // ['U', 'R'] など
   archetype: string;
+  visibility?: 'private' | 'limit' | 'public';
 };
 
 export default function DeckCard({ deck, children }: { deck: DeckProps, children?: ReactNode }) {
@@ -34,7 +35,7 @@ export default function DeckCard({ deck, children }: { deck: DeckProps, children
           <h3 className="font-bold text-white text-lg truncate pr-2 group-hover:text-blue-400 transition-colors">
             {deck.name}
           </h3>
-          
+
           <div className="flex items-center gap-2 mt-2">
             {/* セット名・言語 */}
             <span className="bg-slate-950/50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-800 uppercase tracking-wide">
@@ -70,6 +71,18 @@ export default function DeckCard({ deck, children }: { deck: DeckProps, children
             </div>
           </div>
         </div>
+        {deck.visibility && (
+          <span
+            className={`ml-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm
+              ${deck.visibility === 'private'
+                ? 'bg-red-900/40 border-red-800 text-red-100'
+                : deck.visibility === 'limit'
+                ? 'bg-amber-900/30 border-amber-700 text-amber-100'
+                : 'bg-emerald-900/30 border-emerald-700 text-emerald-100'}`}
+          >
+            {deck.visibility}
+          </span>
+        )}
       </div>
 
       {/* フッター情報 & アクションボタン */}
