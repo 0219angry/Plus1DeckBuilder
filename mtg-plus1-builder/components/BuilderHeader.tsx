@@ -50,7 +50,7 @@ export default function BuilderHeader({
 
   return (
     <header className="border-b border-slate-800/50 bg-slate-950/70 backdrop-blur-md sticky top-0 z-20 h-16">
-      <div className="container mx-auto px-4 h-full flex items-center justify-between gap-4">
+      <div className="w-full px-4 h-full flex items-center justify-between gap-4">
 
         {/* 左側: ロゴ & デッキ名入力 */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
