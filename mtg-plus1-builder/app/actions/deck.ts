@@ -177,6 +177,7 @@ export async function getUserPublicDecks(userId: string) {
         createdAt: data.createdAt,
         builderName: data.builderName || "Unknown Builder",
         colors: data.colors || [],
+        archetype: data.archetype || "",
         // ★重要: editSecret は返さない！
       };
     });

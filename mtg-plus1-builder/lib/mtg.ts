@@ -1,13 +1,21 @@
 // src/lib/mtg.ts (または utils/mtg.ts)
 
-// カラー定義
-export const MTG_COLORS = [
-  { id: 'W', label: '白', class: 'bg-yellow-100 text-yellow-900 border-yellow-200 hover:bg-yellow-200' },
-  { id: 'U', label: '青', class: 'bg-blue-500 text-white border-blue-600 hover:bg-blue-600' },
-  { id: 'B', label: '黒', class: 'bg-slate-800 text-slate-100 border-slate-900 hover:bg-slate-900' },
-  { id: 'R', label: '赤', class: 'bg-red-500 text-white border-red-600 hover:bg-red-600' },
-  { id: 'G', label: '緑', class: 'bg-green-600 text-white border-green-700 hover:bg-green-700' },
-  { id: 'C', label: '無', class: 'bg-slate-400 text-white border-slate-500 hover:bg-slate-500' },
+// 型定義を作成してエクスポート（他でも使えるように）
+export type MtgColorDef = {
+  id: string;
+  label: string;
+  class: string; // 背景色や文字色用のTailwindクラス
+  hex: string;   // グラデーション生成用の16進数カラーコード
+};
+
+// 型注釈 (: MtgColorDef[]) を追加して定義
+export const MTG_COLORS: MtgColorDef[] = [
+  { id: 'W', label: '白', class: 'bg-[#f8e7b9] text-slate-900 border-[#e6d095]', hex: '#f8e7b9' },
+  { id: 'U', label: '青', class: 'bg-[#0e68ab] text-white border-[#095e9c]', hex: '#0e68ab' },
+  { id: 'B', label: '黒', class: 'bg-[#150b00] text-white border-[#2b221b]', hex: '#150b00' },
+  { id: 'R', label: '赤', class: 'bg-[#d3202a] text-white border-[#be1c25]', hex: '#d3202a' },
+  { id: 'G', label: '緑', class: 'bg-[#00733e] text-white border-[#006636]', hex: '#00733e' },
+  { id: 'C', label: '無', class: 'bg-[#ccc2c0] text-slate-900 border-[#b8adaa]', hex: '#ccc2c0' },
 ];
 
 // カラー名辞書 (キーは W, U, B, R, G, C の順でソート済みであること)
@@ -62,3 +70,31 @@ export function getDeckColorName(colors: string[], lang: 'ja' | 'en' = 'ja'): st
   
   return COLOR_NAMES[key] ? COLOR_NAMES[key][lang] : key;
 }
+
+// IDからカラー定義を取得するヘルパー
+export const getMtgColor = (id: string) => {
+  return MTG_COLORS.find(c => c.id === id) || MTG_COLORS[5]; // デフォルト無色
+};
+
+// 色配列からCSSグラデーションを生成するヘルパー
+export const getDeckGradientStyle = (colors: string[]) => {
+  if (!colors.length) return { borderColor: '#334155' }; // slate-700
+
+  // 定義順(WUBRG)に並べ替え
+  const sortOrder = ['W', 'U', 'B', 'R', 'G', 'C'];
+  const sorted = [...colors].sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b));
+
+  // 単色の場合
+  if (sorted.length === 1) {
+    const color = getMtgColor(sorted[0]);
+    return { borderColor: color.hex };
+  }
+
+  // 多色の場合 (グラデーション)
+  const stops = sorted.map(c => getMtgColor(c).hex).join(', ');
+  return {
+    borderImage: `linear-gradient(135deg, ${stops}) 1`,
+    borderWidth: '1px',
+    borderStyle: 'solid'
+  };
+};

@@ -2,7 +2,7 @@
 
 import { useAuth } from "@/context/AuthContext";
 import { getMyDecks, deleteMyDeck } from "@/app/actions/deck";
-import { getUserProfile, UserProfile } from "@/app/actions/user";
+import { getUserProfile, syncUser, UserProfile } from "@/app/actions/user"; // ★syncUserを追加
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { 
@@ -15,14 +15,13 @@ import {
   Settings, 
   Share2, 
   Check, 
-  Twitter, 
-  BookOpen, 
   LayoutGrid,
   Ghost
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import { NoteLogo, XLogo } from "@/components/Logos";
+import DeckCard from "@/components/DeckCase";
 
 // デッキの型定義
 type MyDeck = {
@@ -33,6 +32,7 @@ type MyDeck = {
   createdAt: string;
   colors: string[];
   editSecret?: string;
+  archetype: string;
 };
 
 export default function MyDecksPage() {
@@ -41,6 +41,10 @@ export default function MyDecksPage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  
+  // ★追加: 初回ログインかどうかを管理するステート
+  const [isFirstLogin, setIsFirstLogin] = useState(false);
+  
   const [copied, setCopied] = useState(false);
   const router = useRouter();
 
@@ -55,12 +59,32 @@ export default function MyDecksPage() {
     const init = async () => {
       setLoading(true);
       try {
-        const [decksData, profileData] = await Promise.all([
+        // 並列でデータ取得
+        // ★ここで getUserProfile の代わりに syncUser を呼ぶのがポイントです
+        const [decksData, syncedProfile] = await Promise.all([
           getMyDecks(user.uid),
-          getUserProfile(user.uid)
+          syncUser({
+            uid: user.uid,
+            displayName: user.displayName,
+            photoURL: user.photoURL,
+            email: user.email
+          })
         ]);
+
         setDecks(decksData as MyDeck[]);
-        setProfile(profileData);
+        
+        // syncUserの戻り値があればセット
+        if (syncedProfile) {
+          setProfile(syncedProfile);
+
+          // ★新規ユーザー判定: syncUserが返したフラグを見る
+          // （actions/user.ts の syncUser が { ...profile, isNew: boolean } を返す前提）
+          // @ts-ignore: isNewプロパティの型定義をUserProfileに追加していない場合の回避策
+          if (syncedProfile.isNew) {
+            setIsFirstLogin(true);
+            setIsSettingsOpen(true); // モーダルを強制的に開く
+          }
+        }
       } catch (e) {
         console.error(e);
       } finally {
@@ -101,22 +125,28 @@ export default function MyDecksPage() {
   }
 
   return (
-    // ★統一ポイント1: 全体の背景グラデーション
     <div className="min-h-screen bg-slate-950 from-slate-900 via-slate-950 to-black text-slate-200 font-sans">
       
       {/* モーダル */}
       {user && (
         <ProfileSettingsModal 
           isOpen={isSettingsOpen} 
-          onClose={() => setIsSettingsOpen(false)} 
+          onClose={() => {
+            // ★初回ログイン時は閉じられないようにする
+            if (!isFirstLogin) {
+              setIsSettingsOpen(false);
+            }
+          }} 
           uid={user.uid}
           initialProfile={profile}
           currentCustomId={profile?.customId}
           currentUserPhotoURL={user.photoURL}
+          // ★必須モードフラグを渡す（前のチャットで追加したprops）
+          isRequired={isFirstLogin}
         />
       )}
 
-      {/* ★統一ポイント2: ガラス風ヘッダー */}
+      {/* 以下、ヘッダーやメインコンテンツは変更なし */}
       <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-md sticky top-0 z-10">
         <div className="container mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -138,7 +168,7 @@ export default function MyDecksPage() {
 
       <main className="container mx-auto px-4 py-8 max-w-6xl">
         
-        {/* ★統一ポイント3: プロフィールカードのデザイン統一 */}
+        {/* プロフィールカード */}
         <div className="mb-10 p-6 md:p-8 bg-slate-900/40 border border-slate-800/60 rounded-2xl backdrop-blur-sm shadow-xl flex flex-col md:flex-row items-start justify-between gap-6">
           
           <div className="flex items-start gap-5 w-full">
@@ -159,7 +189,7 @@ export default function MyDecksPage() {
             <div className="flex-1 min-w-0">
               <div className="flex flex-wrap items-center gap-3">
                 <h2 className="font-bold text-white text-2xl md:text-3xl tracking-tight truncate">
-                  {user?.displayName || "No Name"}
+                  {profile?.displayName || user?.displayName || "No Name"}
                 </h2>
                 
                 {/* SNSアイコン */}
@@ -222,7 +252,7 @@ export default function MyDecksPage() {
           </div>
         </div>
 
-        {/* セパレーター */}
+        {/* デッキリスト */}
         <div className="flex items-center gap-4 mb-6">
            <h3 className="text-xl font-bold text-white flex items-center gap-2">
              <LayoutGrid className="text-blue-500" size={20} />
@@ -232,7 +262,6 @@ export default function MyDecksPage() {
            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{decks.length} DECKS</span>
         </div>
 
-        {/* デッキリスト */}
         {decks.length === 0 ? (
           <div className="text-center py-20 border border-dashed border-slate-800 rounded-2xl bg-slate-900/20 backdrop-blur-sm">
             <div className="inline-flex p-4 bg-slate-800/50 rounded-full mb-4">
@@ -252,58 +281,36 @@ export default function MyDecksPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {decks.map((deck) => (
-              // ★統一ポイント4: カードデザインの統一（ガラス感・枠線・ホバー）
-              <div 
-                key={deck.id} 
-                className="group relative bg-slate-900/60 border border-slate-800 rounded-xl p-5 hover:bg-slate-800/80 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 flex flex-col"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-white text-lg truncate pr-2 group-hover:text-blue-400 transition-colors">
-                      {deck.name}
-                    </h3>
-                    <div className="flex gap-2 mt-2">
-                      <span className="bg-slate-950/50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-800 uppercase tracking-wide">
-                        {deck.selectedSet}
-                      </span>
-                      <span className="bg-slate-950/50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-800 uppercase tracking-wide">
-                        {deck.language}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleDelete(deck.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
-                    title="削除"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+              // ★変更: DeckCardコンポーネントを使用
+              <DeckCard key={deck.id} deck={deck}>
+                
+                {/* 閲覧ボタン */}
+                <Link 
+                  href={`/deck/${deck.id}`}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-400 bg-slate-950 hover:bg-slate-900 hover:text-white border border-slate-800 rounded-lg transition-colors"
+                  title="見る"
+                >
+                  <Eye size={14} />
+                </Link>
 
-                <div className="mt-auto pt-4 border-t border-slate-800/50 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
-                    <Clock size={12} />
-                    {new Date(deck.createdAt).toLocaleDateString()}
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Link 
-                      href={`/deck/${deck.id}`}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-400 bg-slate-950 hover:bg-slate-900 hover:text-white border border-slate-800 rounded-lg transition-colors"
-                      title="見る"
-                    >
-                      <Eye size={14} />
-                    </Link>
-                    <Link 
-                      href={`/deck/${deck.id}/edit${deck.editSecret ? `?key=${deck.editSecret}` : ''}`}
-                      className="flex items-center gap-1 px-4 py-1.5 text-xs font-bold text-white bg-blue-600/80 hover:bg-blue-600 rounded-lg transition-colors shadow-lg shadow-blue-900/20"
-                    >
-                      <Edit size={14} /> Edit
-                    </Link>
-                  </div>
-                </div>
-              </div>
+                {/* 編集ボタン */}
+                <Link 
+                  href={`/deck/${deck.id}/edit${deck.editSecret ? `?key=${deck.editSecret}` : ''}`}
+                  className="flex items-center gap-1 px-4 py-1.5 text-xs font-bold text-white bg-blue-600/80 hover:bg-blue-600 rounded-lg transition-colors shadow-lg shadow-blue-900/20"
+                >
+                  <Edit size={14} /> Edit
+                </Link>
+
+                {/* 削除ボタン */}
+                <button 
+                  onClick={() => handleDelete(deck.id)}
+                  className="p-1.5 ml-auto text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
+                  title="削除"
+                >
+                  <Trash2 size={16} />
+                </button>
+
+              </DeckCard>
             ))}
           </div>
         )}
