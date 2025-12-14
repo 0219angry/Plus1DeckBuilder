@@ -93,7 +93,7 @@ const SECTIONS = [
               </div>
             </div>
             <div>
-              <h4 className="font-bold text-white text-sm mb-1">言語統一</h4>
+              <h4 className="font-bold text-white text-sm mb-1">言語統一＆リーガルチェック</h4>
               <p className="text-xs text-slate-400">
                 リスト内のカード名を選択した言語に統一し、リーガルチェックを行います。
                 このボタンを押してもエラーが出ている場合、それは使用できないカードです。
