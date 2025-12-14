@@ -13,6 +13,7 @@ import {
 import { NoteLogo, XLogo } from "@/components/Logos";
 import { Metadata } from "next";
 import DeckCard from "@/components/DeckCase"; // ★追加: コンポーネント読み込み
+import PublicHeader from "@/components/PublicHeader";
 
 // ---------------------------------------------------------
 // 1. 動的メタデータ生成
@@ -68,21 +69,7 @@ export default async function PublicUserPage({ params }: { params: Promise<{ uid
     <div className="min-h-screen bg-slate-950 text-slate-200">
       
       {/* ヘッダー */}
-      <header className="border-b border-slate-800/50 bg-slate-950/50 backdrop-blur-md sticky top-0 z-10">
-        <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-             <Link href="/" className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors">
-               <ArrowLeft size={20} />
-             </Link>
-             <h1 className="font-bold text-white text-lg hidden sm:block">
-               User Profile
-             </h1>
-          </div>
-          <Link href="/" className="font-bold text-xl text-blue-400 hover:text-blue-300 transition-colors">
-            MtG PLUS1
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* メインコンテンツ */}
       <main className="container mx-auto px-4 py-8 max-w-5xl">

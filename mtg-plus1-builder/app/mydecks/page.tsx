@@ -21,6 +21,7 @@ import {
 import { useRouter } from "next/navigation";
 import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import { NoteLogo, XLogo } from "@/components/Logos";
+import DeckCard from "@/components/DeckCase";
 
 // デッキの型定義
 type MyDeck = {
@@ -31,6 +32,7 @@ type MyDeck = {
   createdAt: string;
   colors: string[];
   editSecret?: string;
+  archetype: string;
 };
 
 export default function MyDecksPage() {
@@ -109,7 +111,6 @@ export default function MyDecksPage() {
     const url = `${window.location.origin}/user/${idToUse}`;
     navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
-      setCopied(false); // 即座に戻すか、タイマーを使うかはお好みで
       setTimeout(() => setCopied(false), 2000);
     });
   };
@@ -251,7 +252,7 @@ export default function MyDecksPage() {
           </div>
         </div>
 
-        {/* 以下、デッキリスト部分は変更なし */}
+        {/* デッキリスト */}
         <div className="flex items-center gap-4 mb-6">
            <h3 className="text-xl font-bold text-white flex items-center gap-2">
              <LayoutGrid className="text-blue-500" size={20} />
@@ -280,57 +281,36 @@ export default function MyDecksPage() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {decks.map((deck) => (
-              <div 
-                key={deck.id} 
-                className="group relative bg-slate-900/60 border border-slate-800 rounded-xl p-5 hover:bg-slate-800/80 hover:border-blue-500/30 hover:shadow-lg hover:shadow-blue-500/5 transition-all duration-300 flex flex-col"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-bold text-white text-lg truncate pr-2 group-hover:text-blue-400 transition-colors">
-                      {deck.name}
-                    </h3>
-                    <div className="flex gap-2 mt-2">
-                      <span className="bg-slate-950/50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-800 uppercase tracking-wide">
-                        {deck.selectedSet}
-                      </span>
-                      <span className="bg-slate-950/50 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-800 uppercase tracking-wide">
-                        {deck.language}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <button 
-                    onClick={() => handleDelete(deck.id)}
-                    className="opacity-0 group-hover:opacity-100 p-2 text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
-                    title="削除"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+              // ★変更: DeckCardコンポーネントを使用
+              <DeckCard key={deck.id} deck={deck}>
+                
+                {/* 閲覧ボタン */}
+                <Link 
+                  href={`/deck/${deck.id}`}
+                  className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-400 bg-slate-950 hover:bg-slate-900 hover:text-white border border-slate-800 rounded-lg transition-colors"
+                  title="見る"
+                >
+                  <Eye size={14} />
+                </Link>
 
-                <div className="mt-auto pt-4 border-t border-slate-800/50 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
-                    <Clock size={12} />
-                    {new Date(deck.createdAt).toLocaleDateString()}
-                  </div>
-                  
-                  <div className="flex gap-2">
-                    <Link 
-                      href={`/deck/${deck.id}`}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-slate-400 bg-slate-950 hover:bg-slate-900 hover:text-white border border-slate-800 rounded-lg transition-colors"
-                      title="見る"
-                    >
-                      <Eye size={14} />
-                    </Link>
-                    <Link 
-                      href={`/deck/${deck.id}/edit${deck.editSecret ? `?key=${deck.editSecret}` : ''}`}
-                      className="flex items-center gap-1 px-4 py-1.5 text-xs font-bold text-white bg-blue-600/80 hover:bg-blue-600 rounded-lg transition-colors shadow-lg shadow-blue-900/20"
-                    >
-                      <Edit size={14} /> Edit
-                    </Link>
-                  </div>
-                </div>
-              </div>
+                {/* 編集ボタン */}
+                <Link 
+                  href={`/deck/${deck.id}/edit${deck.editSecret ? `?key=${deck.editSecret}` : ''}`}
+                  className="flex items-center gap-1 px-4 py-1.5 text-xs font-bold text-white bg-blue-600/80 hover:bg-blue-600 rounded-lg transition-colors shadow-lg shadow-blue-900/20"
+                >
+                  <Edit size={14} /> Edit
+                </Link>
+
+                {/* 削除ボタン */}
+                <button 
+                  onClick={() => handleDelete(deck.id)}
+                  className="p-1.5 ml-auto text-slate-500 hover:text-red-400 hover:bg-red-500/10 rounded transition-all"
+                  title="削除"
+                >
+                  <Trash2 size={16} />
+                </button>
+
+              </DeckCard>
             ))}
           </div>
         )}
