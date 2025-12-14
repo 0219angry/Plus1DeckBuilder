@@ -4,30 +4,25 @@ import { getUserPublicDecks } from "@/app/actions/deck";
 import { getUidByCustomId, getUserProfile } from "@/app/actions/user";
 import Link from "next/link";
 import { 
-  Clock, 
   Eye, 
   User as UserIcon, 
   LayoutGrid, 
   ArrowLeft, 
-  Twitter, 
-  BookOpen, 
   Ghost 
 } from "lucide-react";
 import { NoteLogo, XLogo } from "@/components/Logos";
 import { Metadata } from "next";
+import DeckCard from "@/components/DeckCase"; // ★追加: コンポーネント読み込み
 
 // ---------------------------------------------------------
-// 1. 動的メタデータ生成（OGPやブラウザタブのタイトル用）
+// 1. 動的メタデータ生成
 // ---------------------------------------------------------
 export async function generateMetadata({ params }: { params: Promise<{ uid: string }> }): Promise<Metadata> {
   const { uid } = await params;
   const realUid = await getUidByCustomId(uid);
   
-  // ユーザーが見つからない場合
   if (!realUid) {
-    return {
-      title: "User Not Found - MtG PLUS1",
-    };
+    return { title: "User Not Found - MtG PLUS1" };
   }
 
   const profile = await getUserProfile(realUid);
@@ -39,7 +34,6 @@ export async function generateMetadata({ params }: { params: Promise<{ uid: stri
   };
 }
 
-// 常に最新データを取得するように設定
 export const dynamic = 'force-dynamic';
 
 // ---------------------------------------------------------
@@ -47,10 +41,8 @@ export const dynamic = 'force-dynamic';
 // ---------------------------------------------------------
 export default async function PublicUserPage({ params }: { params: Promise<{ uid: string }> }) {
   const { uid } = await params;
-  // URLパラメータ（IDまたはカスタムID）から、本当のUIDを特定
   const realUid = await getUidByCustomId(uid);
 
-  // ユーザーが存在しない場合の表示
   if (!realUid) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center text-slate-500">
@@ -64,17 +56,11 @@ export default async function PublicUserPage({ params }: { params: Promise<{ uid
     );
   }
 
-  // デッキとプロフィール情報を並行して取得
   const [decks, profile] = await Promise.all([
     getUserPublicDecks(realUid),
     getUserProfile(realUid)
   ]);
   
-  // 表示名の決定優先順位:
-  // 1. プロフィール設定の名前
-  // 2. デッキに含まれる製作者名
-  // 3. カスタムID
-  // 4. "Unknown User"
   const deckBuilderName = decks.length > 0 ? decks[0].builderName : null;
   const displayName = profile?.displayName || deckBuilderName || profile?.customId || "Unknown User";
 
@@ -126,36 +112,22 @@ export default async function PublicUserPage({ params }: { params: Promise<{ uid
               {/* SNSリンク */}
               <div className="flex items-center gap-2 ml-1">
                 {profile?.twitterUrl && (
-                  <a 
-                    href={profile.twitterUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="p-2 bg-slate-800/50 hover:bg-[#1DA1F2] text-slate-400 hover:text-white rounded-full transition-all"
-                    title="Twitter / X"
-                  >
+                  <a href={profile.twitterUrl} target="_blank" rel="noopener noreferrer" className="p-2 bg-slate-800/50 hover:bg-[#1DA1F2] text-slate-400 hover:text-white rounded-full transition-all">
                     <XLogo />
                   </a>
                 )}
                 {profile?.noteUrl && (
-                  <a 
-                    href={profile.noteUrl} 
-                    target="_blank" 
-                    rel="noopener noreferrer" 
-                    className="p-2 bg-slate-800/50 hover:bg-[#2cb696] text-slate-400 hover:text-white rounded-full transition-all"
-                    title="Note"
-                  >
+                  <a href={profile.noteUrl} target="_blank" rel="noopener noreferrer" className="p-2 bg-slate-800/50 hover:bg-[#2cb696] text-slate-400 hover:text-white rounded-full transition-all">
                     <NoteLogo />
                   </a>
                 )}
               </div>
             </div>
 
-            {/* 自己紹介文 */}
             <p className="text-slate-400 leading-relaxed max-w-2xl mb-4">
               {profile?.bio || "No bio available."}
             </p>
 
-            {/* 統計バッジ */}
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-800/50 rounded-full border border-slate-700/50 text-xs font-bold text-slate-400">
                <LayoutGrid size={14} />
                <span>Created Decks: {decks.length}</span>
@@ -177,42 +149,16 @@ export default async function PublicUserPage({ params }: { params: Promise<{ uid
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {decks.map((deck) => (
-              <Link 
-                key={deck.id} 
-                href={`/deck/${deck.id}`}
-                className="group block bg-slate-900/60 border border-slate-800 rounded-xl p-5 hover:bg-slate-800/80 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 relative overflow-hidden"
-              >
-                {/* ホバー時の光のエフェクト */}
-                <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/5 to-blue-500/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-
-                <div className="relative">
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1 min-w-0 pr-2">
-                      <h4 className="font-bold text-white text-lg line-clamp-1 group-hover:text-blue-400 transition-colors">
-                        {deck.name}
-                      </h4>
-                      <div className="flex gap-2 mt-2">
-                        <span className="bg-slate-950 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-800 uppercase">
-                          {deck.selectedSet}
-                        </span>
-                        <span className="bg-slate-950 text-slate-400 text-[10px] font-bold px-2 py-1 rounded border border-slate-800 uppercase">
-                          {deck.language}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500 font-mono">
-                      <Clock size={12} />
-                      {new Date(deck.createdAt).toLocaleDateString()}
-                    </div>
-                    <div className="text-xs font-bold text-slate-500 group-hover:text-blue-400 flex items-center gap-1 transition-colors">
-                      <Eye size={14} /> View Deck
-                    </div>
-                  </div>
-                </div>
-              </Link>
+              // ★変更点: コンポーネントを利用して表示
+              <DeckCard key={deck.id} deck={deck}>
+                {/* 閲覧用のアクションボタンを渡す */}
+                <Link 
+                  href={`/deck/${deck.id}`}
+                  className="flex items-center gap-1.5 px-4 py-1.5 text-xs font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 rounded-lg transition-all ml-auto"
+                >
+                  <Eye size={14} /> View
+                </Link>
+              </DeckCard>
             ))}
           </div>
         )}
