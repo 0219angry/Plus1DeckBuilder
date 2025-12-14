@@ -1,7 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Layers, Image as ImageIcon, Globe, AlertTriangle } from "lucide-react";
+import { 
+  Globe, 
+  Layers,
+  ArrowRight, 
+  ImageIcon, 
+  AlertTriangle, 
+  Filter,           // PLUS1検索用
+  LayoutDashboard,  // 管理用
+  Lock,             // 公開設定用
+  Gamepad2          // アリーナ用 (Game Controller icon)
+} from "lucide-react";
 import Footer from "@/components/Footer";
 import ExpansionMarquee from "@/components/ExpansionMarquee";
 import PublicHeader from "@/components/PublicHeader";
@@ -106,35 +116,73 @@ export default function LandingPage() {
             <h2 className="text-2xl font-bold text-center mb-12 text-white">主な機能</h2>
             
             <div className="grid md:grid-cols-3 gap-8">
-              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-blue-500/50 transition-colors group">
-                <div className="w-12 h-12 bg-blue-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Globe className="text-blue-400" size={24} />
+              
+              {/* 1. PLUS1 特化検索 */}
+              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-cyan-500/50 transition-colors group">
+                <div className="w-12 h-12 bg-cyan-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Filter className="text-cyan-400" size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">言語統一 & 整形</h3>
+                <h3 className="text-lg font-bold text-white mb-2">PLUS1 特化検索</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                  英語版しかないカードも、日本語版があるカードも、ボタン一つでリスト上の表記を日本語に統一。
+                  「Foundations」＋「選択した1エキスパンション」のカードプールを自動でフィルタリング。構築ミスを未然に防ぎます。
                 </p>
               </div>
 
+              {/* 2. リーガルチェック */}
+              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-red-500/50 transition-colors group">
+                <div className="w-12 h-12 bg-red-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <AlertTriangle className="text-red-400" size={24} />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">禁止カード警告</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  最新の禁止改定に対応。選択したセットに基づき、使用不可能なカードが含まれている場合は即座に警告します。
+                </p>
+              </div>
+
+              {/* 3. MTG Arena エクスポート (★NEW) */}
+              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-orange-500/50 transition-colors group">
+                <div className="w-12 h-12 bg-orange-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Gamepad2 className="text-orange-400" size={24} />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">MTG Arena エクスポート</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  作成したデッキをワンクリックでコピー。そのままMTGアリーナにインポートして、すぐに対戦を始められます。
+                </p>
+              </div>
+
+              {/* 4. 画像出力 & シェア */}
               <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-purple-500/50 transition-colors group">
                 <div className="w-12 h-12 bg-purple-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                   <ImageIcon className="text-purple-400" size={24} />
                 </div>
                 <h3 className="text-lg font-bold text-white mb-2">画像出力 & シェア</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                  作成したデッキを美しい画像として保存。マナカーブや色分布などの統計情報も自動でレイアウトされます。
+                  作成したデッキを美しい画像として保存。SNSでのシェアに最適なレイアウトで出力されます。
                 </p>
               </div>
 
-              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-red-500/50 transition-colors group">
-                <div className="w-12 h-12 bg-red-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <AlertTriangle className="text-red-400" size={24} />
+              {/* 5. デッキ管理 */}
+              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-emerald-500/50 transition-colors group">
+                <div className="w-12 h-12 bg-emerald-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <LayoutDashboard className="text-emerald-400" size={24} />
                 </div>
-                <h3 className="text-lg font-bold text-white mb-2">リーガルチェック</h3>
+                <h3 className="text-lg font-bold text-white mb-2">デッキ管理</h3>
                 <p className="text-slate-400 text-sm leading-relaxed">
-                  選択したエキスパンションに基づき、使用可能なカードかどうかを自動判定。禁止カードが含まれている場合は即座に警告します。
+                  作成したデッキをクラウドで保存・管理。あなた専用のプロフィールページで、リストを公開することも可能です。
                 </p>
               </div>
+
+              {/* 6. 公開範囲コントロール */}
+              <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 hover:border-amber-500/50 transition-colors group">
+                <div className="w-12 h-12 bg-amber-900/30 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <Lock className="text-amber-400" size={24} />
+                </div>
+                <h3 className="text-lg font-bold text-white mb-2">公開範囲コントロール</h3>
+                <p className="text-slate-400 text-sm leading-relaxed">
+                  「全体公開」「限定公開（URLのみ）」「非公開」を選択可能。調整中のデッキを隠したり、身内だけに共有したりできます。
+                </p>
+              </div>
+
             </div>
           </div>
         </section>
