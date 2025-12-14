@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { X, Save, User } from "lucide-react";
-import { updateUserProfile, claimCustomId, UserProfile } from "@/app/actions/user"; // pathは合わせてください
+import { X, Save, User, AlertCircle } from "lucide-react"; // AlertCircleを追加
+import { updateUserProfile, claimCustomId, UserProfile } from "@/app/actions/user"; 
 import { NoteLogo, XLogo } from "@/components/Logos";
 
 type Props = {
@@ -12,7 +12,7 @@ type Props = {
   initialProfile: UserProfile | null;
   currentCustomId?: string;
   currentUserPhotoURL?: string | null;
-  isRequired?: boolean; // ★追加: 初回登録など必須入力モードかどうか
+  isRequired?: boolean;
 };
 
 export default function ProfileSettingsModal({ 
@@ -22,44 +22,60 @@ export default function ProfileSettingsModal({
   initialProfile, 
   currentCustomId, 
   currentUserPhotoURL,
-  isRequired = false // デフォルトはfalse
+  isRequired = false 
 }: Props) {
   const [loading, setLoading] = useState(false);
+  // ★追加: エラーメッセージ管理用
+  const [error, setError] = useState(""); 
+  
   const [formData, setFormData] = useState({
     customId: currentCustomId || "",
     twitterUrl: initialProfile?.twitterUrl || "",
     noteUrl: initialProfile?.noteUrl || "",
     bio: initialProfile?.bio || "",
-    // 初回の場合はGoogleのアイコンなどを初期値に入れる
     photoURL: initialProfile?.photoURL || currentUserPhotoURL || "",
   });
 
   if (!isOpen) return null;
 
   const handleSave = async () => {
+    // バリデーション: IDが空なら処理しない
+    if (!formData.customId) {
+      setError("IDを入力してください");
+      return;
+    }
+
     setLoading(true);
+    setError(""); // エラーをリセット
+
     try {
-      // 1. プロフィールの保存
+      // 1. カスタムIDの登録チェック（変更がある場合のみ）
+      if (formData.customId && formData.customId !== currentCustomId) {
+         const result = await claimCustomId(uid, formData.customId);
+         
+         // ★重要: 失敗したらエラーを表示して中断（保存させない）
+         if (!result.success) {
+            setError(result.message || "IDの取得に失敗しました");
+            setLoading(false);
+            return; 
+         }
+      }
+
+      // 2. プロフィールの保存（IDチェック通過後のみ実行）
       await updateUserProfile(uid, {
         twitterUrl: formData.twitterUrl,
         noteUrl: formData.noteUrl,
         bio: formData.bio
       });
-
-      // 2. カスタムIDの登録（変更がある場合のみ）
-      if (formData.customId && formData.customId !== currentCustomId) {
-         await claimCustomId(uid, formData.customId);
-      }
       
-      onClose(); // モーダルを閉じる
+      onClose();
       
-      // 初回の場合はリロードして情報を反映させる
       if (isRequired) {
         window.location.reload();
       }
     } catch (e) {
       console.error(e);
-      alert("保存に失敗しました。IDが既に使用されている可能性があります。");
+      setError("予期せぬエラーが発生しました。");
     } finally {
       setLoading(false);
     }
@@ -74,7 +90,6 @@ export default function ProfileSettingsModal({
             {isRequired ? "Welcome! アカウント設定" : "プロフィール設定"}
           </h2>
           
-          {/* ★必須モードでない場合のみ閉じるボタンを表示 */}
           {!isRequired && (
             <button onClick={onClose} className="text-slate-400 hover:text-white">
               <X size={20} />
@@ -92,22 +107,35 @@ export default function ProfileSettingsModal({
         <div className="space-y-4">
           {/* カスタムID */}
           <div>
-            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">Custom ID (URL)</label>
-            <div className="flex items-center gap-2">
+            <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
+              Custom ID (URL) <span className="text-red-500">*</span>
+            </label>
+            <div className={`flex items-center gap-2 border rounded p-2 bg-slate-950 transition-colors ${error ? "border-red-500 bg-red-950/10" : "border-slate-800 focus-within:border-blue-500"}`}>
                <span className="text-slate-600 text-sm">/user/</span>
                <input 
                  type="text" 
                  value={formData.customId}
-                 onChange={(e) => setFormData({...formData, customId: e.target.value})}
-                 className="flex-1 bg-slate-950 border border-slate-800 rounded p-2 text-white text-sm focus:border-blue-500 outline-none"
+                 onChange={(e) => {
+                   setFormData({...formData, customId: e.target.value});
+                   setError(""); // 入力し直したらエラーを消す
+                 }}
+                 className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-slate-600"
                  placeholder="your-id"
-                 required // 必須にする
+                 required
                />
             </div>
-            {isRequired && <p className="text-[10px] text-slate-500 mt-1">※後から変更可能です</p>}
+            
+            {/* ★エラーメッセージ表示エリア */}
+            {error && (
+              <p className="text-xs text-red-400 mt-1.5 flex items-center gap-1 font-bold animate-in slide-in-from-top-1">
+                <AlertCircle size={12} /> {error}
+              </p>
+            )}
+            
+            {!error && isRequired && <p className="text-[10px] text-slate-500 mt-1">※3文字以上の英数字。後から変更可能です</p>}
           </div>
 
-                    {/* Twitter */}
+          {/* Twitter */}
           <div>
             <label className="block text-xs font-bold text-slate-400 uppercase mb-1 flex items-center gap-1">
               <XLogo size={16} /> Twitter / X URL
@@ -150,7 +178,8 @@ export default function ProfileSettingsModal({
         <div className="mt-6 flex justify-end">
           <button 
             onClick={handleSave} 
-            disabled={loading || !formData.customId} // ID未入力なら押せない
+            // IDが空、またはロード中ならボタンを押せない
+            disabled={loading || !formData.customId} 
             className="flex items-center gap-2 px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? "保存中..." : <><Save size={16} /> {isRequired ? "設定してはじめる" : "保存"}</>}
