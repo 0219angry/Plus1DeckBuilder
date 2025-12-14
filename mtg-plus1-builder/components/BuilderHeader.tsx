@@ -103,7 +103,7 @@ export default function BuilderHeader({
 
             {/* 公開設定 */}
             {user && (
-              <div className="relative hidden lg:block">
+              <div className="relative hidden md:block">
                 <Eye size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
                 <select
                   value={visibility}
