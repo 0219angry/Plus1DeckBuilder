@@ -1,8 +1,9 @@
 "use client";
 
 import { useAppStatus } from "@/hooks/useAppStatus";
-import { ArrowLeft, Bug, Lightbulb, CheckCircle2, Circle, Clock, AlertCircle, Loader2, MessageSquare } from "lucide-react";
+import { Bug, Lightbulb, CheckCircle2, Circle, Clock, AlertCircle, Loader2, MessageSquare, Map } from "lucide-react";
 import Link from "next/link";
+import PublicHeader from "@/components/PublicHeader";
 
 export default function RoadmapPage() {
   const { items, loading } = useAppStatus();
@@ -27,14 +28,11 @@ export default function RoadmapPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col">
-      <header className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-10">
-        <div className="max-w-4xl mx-auto flex items-center gap-4">
-          <Link href="/" className="p-2 rounded-full hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-xl font-bold">開発状況 & ロードマップ</h1>
-        </div>
-      </header>
+      <PublicHeader
+        backHref="/"
+        showNavLinks={false}
+        title={<span className="flex items-center gap-2 text-blue-200"><Map />開発状況 &amp; ロードマップ</span>}
+      />
 
       <main className="flex-1 max-w-4xl mx-auto w-full p-6 space-y-12">
         

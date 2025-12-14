@@ -2,6 +2,7 @@ import { getAdminDecks, getStats } from '@/app/actions/admin';
 import Link from 'next/link';
 import { Shield, ExternalLink, Clock, Key, Database, PieChart, TrendingUp } from 'lucide-react';
 import AdminDeleteButton from '@/components/AdminDeleteButton';
+import PublicHeader from '@/components/PublicHeader';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,21 +25,18 @@ export default async function AdminPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-8">
-      {/* ヘッダー */}
-      <header className="flex items-center justify-between mb-8 pb-4 border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-slate-800 rounded border border-slate-700">
-            <Shield className="text-blue-400" size={24} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-white">Admin Dashboard</h1>
-            <p className="text-slate-500 text-sm">システム管理</p>
-          </div>
-        </div>
-        <Link href="/" className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-sm transition-colors">
-          アプリに戻る
-        </Link>
-      </header>
+      <PublicHeader
+        showNavLinks={false}
+        title={<span className="flex items-center gap-2 text-blue-200"><Shield />Admin Dashboard</span>}
+        customActions={(
+          <Link
+            href="/"
+            className="hidden sm:inline-flex px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded font-bold text-sm transition-colors"
+          >
+            アプリに戻る
+          </Link>
+        )}
+      />
 
       {/* 統計エリア */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">

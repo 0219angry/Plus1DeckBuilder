@@ -1,42 +1,14 @@
 import Link from "next/link";
-import { ArrowRight, Layers, Image as ImageIcon, Globe, Ban, AlertTriangle, Map } from "lucide-react"; // Mapアイコン追加
+import { ArrowRight, Layers, Image as ImageIcon, Globe, AlertTriangle } from "lucide-react";
 import Footer from "@/components/Footer";
 import ExpansionMarquee from "@/components/ExpansionMarquee";
-import UserMenu from "@/components/UserMenu";
+import PublicHeader from "@/components/PublicHeader";
 
 export default function LandingPage() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 flex flex-col selection:bg-blue-500/30">
       
-      {/* ヘッダー */}
-      <header className="px-6 py-4 flex justify-between items-center border-b border-slate-800 bg-slate-950/80 backdrop-blur-sm sticky top-0 z-50">
-        <Link 
-          href="/" 
-          className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-        >
-          <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
-            +1
-          </div>
-          <span className="font-bold text-xl tracking-tight text-white">MtG PLUS1</span>
-        </Link>
-        <nav className="flex gap-4 text-sm font-medium items-center">
-          <Link href="/banned-cards" className="hover:text-red-400 transition-colors flex items-center gap-1 hidden sm:flex">
-            <Ban size={16} /> 禁止カード
-          </Link>
-          {/* ★追加: ロードマップへのリンク */}
-          <Link href="/roadmap" className="hover:text-blue-400 transition-colors flex items-center gap-1 hidden sm:flex">
-            <Map size={16} /> 開発状況
-          </Link>
-          
-          <Link 
-            href="/builder" 
-            className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-full transition-all shadow-lg hover:shadow-blue-500/25 flex items-center gap-2"
-          >
-            デッキ作成 <ArrowRight size={16} />
-          </Link>
-          <UserMenu />
-        </nav>
-      </header>
+      <PublicHeader />
 
       <main className="flex-1 flex flex-col">
         {/* (メインコンテンツは変更なし) */}
