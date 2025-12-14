@@ -29,7 +29,7 @@ function LoginController() {
     } else {  
       setIsLoginModalOpen(false);  
     }  
-  }, [searchParams, user]);
+  }, [searchParams, user, loading]);
 
   // モーダルを閉じたときの処理
   const handleClose = () => {
