@@ -29,11 +29,11 @@ export default function PublicHeader() {
             <>
               {/* ログイン中: ダッシュボードに戻る & 新規作成 */}
               <Link 
-                href="/dashboard" 
+                href="/mydeck" 
                 className="flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors text-sm font-bold"
               >
                 <LayoutGrid size={18} />
-                <span className="hidden sm:inline">Dashboard</span>
+                <span className="hidden sm:inline">My Decks</span>
               </Link>
 
               <Link 
