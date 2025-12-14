@@ -2,6 +2,7 @@ import { ReactNode } from "react";
 import { Clock } from "lucide-react";
 import { getDeckColorName, getDeckGradientStyle } from "@/lib/mtg"; // 作成した関数
 import ManaSymbol from "./ManaSymbol"; // 作成したコンポーネント
+import { VISIBILITY_STYLES, VISIBILITY_LABELS, VisibilityType } from '@/lib/constants';
 
 type DeckProps = {
   id: string;
@@ -20,6 +21,10 @@ export default function DeckCard({ deck, children }: { deck: DeckProps, children
   
   // デッキカラー名 (例: "イゼット")
   const deckColorName = getDeckColorName(deck.colors, 'ja');
+
+  const visibility = (deck.visibility || 'public') as VisibilityType;
+  const visibilityClass = VISIBILITY_STYLES[visibility];
+  const visibilityLabel = VISIBILITY_LABELS[visibility];
 
   return (
     <div 
@@ -72,16 +77,9 @@ export default function DeckCard({ deck, children }: { deck: DeckProps, children
           </div>
         </div>
         {deck.visibility && (
-          <span
-            className={`ml-2 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border shadow-sm
-              ${deck.visibility === 'private'
-                ? 'bg-red-900/40 border-red-800 text-red-100'
-                : deck.visibility === 'limit'
-                ? 'bg-amber-900/30 border-amber-700 text-amber-100'
-                : 'bg-emerald-900/30 border-emerald-700 text-emerald-100'}`}
-          >
-            {deck.visibility}
-          </span>
+          <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] border font-bold uppercase tracking-wider ${visibilityClass}`}>
+            {visibilityLabel}
+          </span> 
         )}
       </div>
 
