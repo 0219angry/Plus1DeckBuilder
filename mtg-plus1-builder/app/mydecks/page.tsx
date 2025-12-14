@@ -52,7 +52,7 @@ export default function MyDecksPage() {
   // 初期データ取得
   useEffect(() => {
     if (authLoading) return;
-    if (!user) {
+    if (!user || user?.isAnonymous) {
       router.push("/?login=required");
       return;
     }
