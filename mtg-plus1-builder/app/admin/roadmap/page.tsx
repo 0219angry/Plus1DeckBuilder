@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAppStatus, StatusItem } from "@/hooks/useAppStatus";
 import { ArrowLeft, Plus, Trash2, LayoutDashboard } from "lucide-react";
 import Link from "next/link";
+import PublicHeader from "@/components/PublicHeader";
 
 export default function AdminRoadmapPage() {
   // ★認証ロジックは削除 (Layoutで処理済み)
@@ -28,15 +29,15 @@ export default function AdminRoadmapPage() {
 
   return (
     <div className="flex-1 text-slate-200">
-      <header className="bg-slate-900 border-b border-slate-800 p-4 sticky top-8 z-10 flex justify-between items-center">
-        <h1 className="text-lg font-bold flex items-center gap-2">
-          <LayoutDashboard className="text-blue-400" />
-          Roadmap Admin
-        </h1>
-        <Link href="/roadmap" className="text-xs text-slate-400 hover:text-white flex items-center gap-1">
-          <ArrowLeft size={14} /> 公開ページへ戻る
-        </Link>
-      </header>
+      <PublicHeader
+        showNavLinks={false}
+        title={<span className="flex items-center gap-2 text-blue-200"><LayoutDashboard />Roadmap Admin</span>}
+        customActions={(
+          <Link href="/roadmap" className="text-xs text-slate-400 hover:text-white flex items-center gap-1 px-3 py-2 rounded-lg hover:bg-slate-900 transition-colors">
+            <ArrowLeft size={14} /> 公開ページへ戻る
+          </Link>
+        )}
+      />
 
       <main className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-3 gap-8">
         

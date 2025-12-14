@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { useBannedCards } from "@/hooks/useBannedCards";
 import { EXPANSIONS } from "@/types";
-import { AlertTriangle, ArrowLeft, Ban, Loader2, ExternalLink } from "lucide-react";
+import { AlertTriangle, Ban, Loader2, ExternalLink } from "lucide-react";
 import Link from "next/link";
+import PublicHeader from "@/components/PublicHeader";
 
 type CardData = {
   name: string;        
@@ -147,16 +148,11 @@ export default function BannedCardsPage() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200">
-      <header className="bg-slate-900 border-b border-slate-800 p-4 sticky top-0 z-10">
-        <div className="max-w-5xl mx-auto flex items-center gap-4">
-          <Link href="/" className="p-2 rounded-full hover:bg-slate-800 transition-colors text-slate-400 hover:text-white">
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-xl font-bold flex items-center gap-2 text-red-400">
-            <Ban /> 禁止カード一覧 (Banned List)
-          </h1>
-        </div>
-      </header>
+      <PublicHeader
+        backHref="/"
+        showNavLinks={false}
+        title={<span className="flex items-center gap-2 text-red-300"><Ban />禁止カード一覧</span>}
+      />
 
       <main className="max-w-5xl mx-auto p-4 md:p-8">
         <div className="mb-8 bg-red-900/20 border border-red-900/50 p-4 rounded-lg flex items-start gap-3 text-red-200">
