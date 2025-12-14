@@ -22,6 +22,7 @@ import { useBannedCards } from "@/hooks/useBannedCards";
 import { useAuth } from "@/context/AuthContext";
 
 import { Search as SearchIcon, BarChart3, Play, Info, CloudUpload, Save, Share2, HelpCircle } from "lucide-react";
+import BuilderHeader from "./BuilderHeader";
 
 // Props定義: 編集モード時はこれらの値が渡される
 type BuilderPageProps = {
@@ -620,93 +621,19 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
   return (
     <main className="h-screen flex flex-col bg-slate-950 text-white overflow-hidden">
       
-      {/* Header: 保存ボタンと編集モード表示を追加 */}
-      <header className="p-3 bg-slate-950 border-b border-slate-800 flex gap-4 items-center shrink-0 justify-between">
-        <div className="flex items-center gap-4">
-          
-          {/* ロゴとバッジをまとめるコンテナ */}
-          <div className="flex items-center mr-2">
-            <Link 
-              href="/" 
-              className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
-            >
-              {/* +1 ロゴアイコン */}
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-900/20">
-                +1
-              </div>
-              {/* タイトルテキスト */}
-              <h1 className="text-lg font-bold text-blue-400">MtG PLUS1</h1>
-            </Link>
-
-            {/* Edit Mode バッジ (リンクの外側に配置) */}
-            {deckId && (
-              <span className="ml-3 text-[10px] uppercase tracking-wider text-slate-400 border border-slate-700 bg-slate-900 px-2 py-0.5 rounded select-none">
-                Edit Mode
-              </span>
-            )}
-          </div>
-            <select value={selectedSet} onChange={(e) => setSelectedSet(e.target.value)} className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm max-w-[200px]" disabled={setsLoading}>
-              {displayExpansions.map((set) => <option key={set.code} value={set.code}>{language === "ja" ? set.name_ja : set.name_en}</option>)}
-            </select>
-            <select value={language} onChange={(e) => setLanguage(e.target.value)} className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-40">
-              {LANGUAGES.map((lang) => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
-            </select>
-            <select
-              value={visibility}
-              onChange={(e) => setVisibility(e.target.value as 'private' | 'limit' | 'public')}
-              className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-48"
-              title="公開範囲を選択"
-            >
-              <option value="private">非公開 (自分のみ)</option>
-              <option value="limit">限定公開 (URLを知っている人)</option>
-              <option value="public">公開 (ユーザーページに掲載)</option>
-            </select>
-        </div>
-
-        {/* 保存アクションエリア */}
-        <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsHelpOpen(true)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-full transition-colors"
-              title="使い方を見る"
-            >
-              <HelpCircle size={20} />
-            </button>
-            {/* 共有ボタン (保存済みの場合のみ表示) */}
-            {deckId && (
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 rounded font-bold transition-colors"
-                title="共有リンクを表示"
-              >
-                <Share2 size={18} />
-                <span className="hidden sm:inline">Links</span>
-              </button>
-            )}
-            <button 
-                onClick={handleCloudSave} 
-                disabled={isSaving}
-                className={`flex items-center gap-2 px-4 py-1.5 rounded font-bold transition-all ${
-                    isSaving 
-                        ? "bg-slate-700 text-slate-400 cursor-not-allowed" 
-                        : "bg-blue-600 hover:bg-blue-500 text-white shadow-lg shadow-blue-900/20"
-                }`}
-            >
-                {isSaving ? (
-                    <span className="flex items-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white/20 border-t-white rounded-full animate-spin"></span>
-                        Saving...
-                    </span>
-                ) : (
-                    <>
-                        {deckId ? <Save size={18} /> : <CloudUpload size={18} />}
-                        {deckId ? "保存 (Update)" : "保存して共有"}
-                    </>
-                )}
-            </button>
-            <UserMenu />
-        </div>
-      </header>
+      <BuilderHeader
+        deckName={deckName}
+        onChangeDeckName={setDeckName}
+        selectedSet={selectedSet}
+        onSetChange={setSelectedSet}
+        language={language}
+        onLanguageChange={setLanguage}
+        visibility={visibility}
+        onVisibilityChange={setVisibility}
+        onSave={handleCloudSave}
+        isSaving={isSaving}
+        onOpenHelp={() => setIsHelpOpen(true)}
+      />
 
       <div className="flex-1 overflow-hidden">
         <PanelGroup direction="horizontal">
