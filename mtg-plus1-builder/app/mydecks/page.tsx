@@ -23,6 +23,7 @@ import ProfileSettingsModal from "@/components/ProfileSettingsModal";
 import { NoteLogo, XLogo } from "@/components/Logos";
 import DeckCard from "@/components/DeckCase";
 import PublicHeader from "@/components/PublicHeader";
+import { PATHS } from "@/lib/constants";
 
 // デッキの型定義
 type MyDeck = {
@@ -53,7 +54,7 @@ export default function MyDecksPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user || user?.isAnonymous) {
-      router.push("/?login=required");
+      router.push(PATHS.LOGIN_REQUIRED);
       return;
     }
 

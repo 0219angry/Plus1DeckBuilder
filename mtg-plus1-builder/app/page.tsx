@@ -14,14 +14,21 @@ import { useAuth } from "@/context/AuthContext";
 function LoginController() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
   useEffect(() => {
-    // 1. URLに login=required があり、かつ未ログインの場合
-    if (searchParams.get("login") === "required" && !user) {
+    const loginParam = searchParams.get("login");
+    console.log("Login Check:", { loginParam, user, loading }); // ★デバッグログ
+
+    // URLに login=required があり、かつ未ログインの場合
+    // ※loading中は判定しない方が安全です
+    if (!loading && loginParam === "required" && !user) {
+      console.log("Opening Modal!"); // ★これが表示されるか確認
       setIsLoginModalOpen(true);
-    }
+    } else {  
+      setIsLoginModalOpen(false);  
+    }  
   }, [searchParams, user]);
 
   // モーダルを閉じたときの処理
