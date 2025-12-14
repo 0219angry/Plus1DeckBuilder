@@ -10,6 +10,7 @@ type DeckProps = {
   language: string;
   createdAt: string;
   colors: string[]; // ['U', 'R'] など
+  archetype: string;
 };
 
 export default function DeckCard({ deck, children }: { deck: DeckProps, children?: ReactNode }) {
@@ -63,7 +64,7 @@ export default function DeckCard({ deck, children }: { deck: DeckProps, children
               {/* デッキタイプ名（イゼット、エスパーなど） */}
               {deckColorName && (
                 <span className="text-xs text-slate-400 font-medium">
-                  {deckColorName}
+                  {deckColorName}{deck.archetype}
                 </span>
               )}
             </div>
