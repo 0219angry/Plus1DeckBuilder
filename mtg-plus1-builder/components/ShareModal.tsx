@@ -2,6 +2,7 @@
 
 import { X, Copy, Check, Lock, Globe } from "lucide-react";
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 type Props = {
   isOpen: boolean;
@@ -95,6 +96,7 @@ export default function ShareModal({ isOpen, onClose, deckId, editKey }: Props) 
                   <span>
                     <strong>このURLは他の人に教えないでください。</strong><br/>
                     このURLを知っている人は誰でもあなたのデッキを上書き・削除できます。ブックマークして保管してください。
+                    ログイン中であれば<Link href="/mydecks">マイデッキ</Link>からも編集・削除できます。
                   </span>
                 </p>
               </div>
