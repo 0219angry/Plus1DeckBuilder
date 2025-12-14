@@ -52,7 +52,7 @@ export async function getDeck(id: string): Promise<DeckResponse | null> {
 
     const data = doc.data() as any
 
-    const visibility = data.visibility || 'public';
+    const visibility = data.visibility || 'limit';
 
     // editSecret を削除してクライアントに返す
     const { editSecret, ...safeData } = data
