@@ -52,7 +52,7 @@ export default function BuilderHeader({
     <header className="border-b border-slate-800/50 bg-slate-950/70 backdrop-blur-md sticky top-0 z-20 h-16">
       <div className="w-full px-4 h-full flex items-center justify-between gap-4">
 
-        {/* 左側: ロゴ & デッキ名入力 */}
+        {/* 左側: ロゴ */}
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Link
             href="/"
@@ -60,18 +60,14 @@ export default function BuilderHeader({
           >
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">+1</span>
           </Link>
-        </div>
 
-        {/* 右側: コントロール群 */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-          
           {/* セット選択 (動的生成) */}
           <div className="relative hidden md:block">
-            <Layout size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <Layout size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
             <select
               value={selectedSet}
               onChange={(e) => onSetChange(e.target.value)}
-              className="appearance-none bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded pl-8 pr-8 py-1.5 focus:border-blue-500 focus:outline-none hover:bg-slate-800 transition-colors cursor-pointer w-40 truncate"
+              className="appearance-none bg-slate-900 border border-slate-700 text-white text-xs rounded pl-8 pr-8 py-1.5 focus:border-blue-500 focus:outline-none hover:bg-slate-800 transition-colors cursor-pointer w-40 truncate"
               disabled={setsLoading && allowedSets.length === 0}
             >
               {/* フックから取得したセット一覧を展開 */}
@@ -85,42 +81,48 @@ export default function BuilderHeader({
             
             {/* ローディング中はスピナー、完了後はChevronを表示 */}
             {setsLoading && allowedSets.length === 0 ? (
-               <Loader2 size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 animate-spin" />
+               <Loader2 size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white animate-spin" />
             ) : (
-               <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+               <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+            )}
+            </div>
+
+            {/* 言語選択 */}
+            <div className="relative hidden md:block">
+              <Globe size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+              <select
+                value={language}
+                onChange={(e) => onLanguageChange(e.target.value)}
+                className="appearance-none bg-slate-900 border border-slate-700 text-white text-xs rounded pl-8 pr-8 py-1.5 focus:border-blue-500 focus:outline-none hover:bg-slate-800 transition-colors cursor-pointer"
+              >
+                <option value="ja">JP</option>
+                <option value="en">EN</option>
+              </select>
+              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+            </div>
+
+            {/* 公開設定 */}
+            {user && (
+              <div className="relative hidden lg:block">
+                <Eye size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white pointer-events-none" />
+                <select
+                  value={visibility}
+                  onChange={(e) => onVisibilityChange(e.target.value as "public" | "private" | "limit")}
+                  className="appearance-none bg-slate-900 border border-slate-700 text-white text-xs rounded pl-8 pr-8 py-1.5 focus:border-blue-500 focus:outline-none hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <option value="public">全体公開</option>
+                  <option value="limit">限定公開</option>
+                  <option value="private">非公開</option>
+                </select>
+                <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+              </div>
             )}
           </div>
 
-          {/* 言語選択 */}
-          <div className="relative hidden md:block">
-            <Globe size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-            <select
-              value={language}
-              onChange={(e) => onLanguageChange(e.target.value)}
-              className="appearance-none bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded pl-8 pr-8 py-1.5 focus:border-blue-500 focus:outline-none hover:bg-slate-800 transition-colors cursor-pointer"
-            >
-              <option value="ja">JP</option>
-              <option value="en">EN</option>
-            </select>
-            <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-          </div>
-
-          {/* 公開設定 */}
-          {user && (
-            <div className="relative hidden lg:block">
-              <Eye size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-              <select
-                value={visibility}
-                onChange={(e) => onVisibilityChange(e.target.value as "public" | "private" | "limit")}
-                className="appearance-none bg-slate-900 border border-slate-700 text-slate-300 text-xs rounded pl-8 pr-8 py-1.5 focus:border-blue-500 focus:outline-none hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <option value="public">全体公開</option>
-                <option value="limit">限定公開</option>
-                <option value="private">非公開</option>
-              </select>
-              <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-            </div>
-          )}
+        {/* 右側: コントロール群 */}
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          
+          
 
           {/* ヘルプ */}
           <button 
