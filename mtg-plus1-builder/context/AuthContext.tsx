@@ -37,10 +37,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // 監視リスナーの設定
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setLoading(false); // ユーザー有無に関わらず、確認が終わったらロード完了
-    });
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (currentUser) => {
+        setUser(currentUser);
+        setLoading(false); // ユーザー有無に関わらず、確認が終わったらロード完了
+      },
+      (error) => {
+        console.error("認証状態の監視中にエラーが発生しました:", error);
+        setUser(null);
+        setLoading(false);
+      }
+    );
 
     return () => unsubscribe();
   }, [auth]);
