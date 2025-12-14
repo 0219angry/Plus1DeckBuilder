@@ -4,17 +4,20 @@ import {
   X, 
   Search, 
   MousePointerClick, 
-  Save, 
   BarChart3, 
   Play, 
-  Info, 
-  Key, 
   Share2, 
   HelpCircle, 
   Gamepad2, 
   LayoutDashboard, 
-  Keyboard,
-  Filter
+  // 以下、ボタン説明用にアイコンを追加
+  Trash2,
+  RefreshCw,
+  Upload,
+  Download,
+  List,
+  LayoutGrid,
+  Settings2
 } from "lucide-react";
 import { useState } from "react";
 
@@ -22,13 +25,6 @@ type Props = {
   isOpen: boolean;
   onClose: () => void;
 };
-
-// キーボード表示用コンポーネント
-const Kbd = ({ children }: { children: React.ReactNode }) => (
-  <kbd className="px-2 py-0.5 mx-1 bg-slate-800 border border-slate-600 rounded text-[10px] font-mono text-slate-300 shadow-sm">
-    {children}
-  </kbd>
-);
 
 const SECTIONS = [
   {
@@ -68,9 +64,96 @@ const SECTIONS = [
     ),
   },
   {
+    id: "buttons",
+    title: "パネル機能・ボタン",
+    icon: Settings2,
+    content: (
+      <div className="space-y-6">
+        <h3 className="font-bold text-lg text-white mb-4">デッキパネルの機能</h3>
+        <div className="grid gap-4">
+          
+          <div className="flex gap-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+            <div className="shrink-0 pt-1">
+              <div className="p-2 bg-slate-800 rounded border border-slate-600 text-slate-300">
+                <Trash2 size={20} />
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold text-red-400 text-sm mb-1">リセット</h4>
+              <p className="text-xs text-slate-400">
+                現在のデッキ内容（カード・デッキ名など）を全て消去します。取り消しできないためご注意ください。
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+            <div className="shrink-0 pt-1">
+              <div className="p-2 bg-slate-800 rounded border border-slate-600 text-slate-300">
+                <RefreshCw size={20} />
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold text-white text-sm mb-1">言語統一</h4>
+              <p className="text-xs text-slate-400">
+                リスト内のカード名を日本語に統一します（日本語版が存在しないカードは英語のまま維持されます）。
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+            <div className="shrink-0 pt-1">
+              <div className="p-2 bg-slate-800 rounded border border-slate-600 text-slate-300">
+                <Upload size={20} />
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold text-white text-sm mb-1">インポート (Import)</h4>
+              <p className="text-xs text-slate-400">
+                MTG Arena形式やテキスト形式のデッキリストを読み込みます。
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+            <div className="shrink-0 pt-1">
+              <div className="p-2 bg-blue-600 rounded border border-blue-500 text-white">
+                <Download size={20} />
+              </div>
+            </div>
+            <div>
+              <h4 className="font-bold text-white text-sm mb-1">エクスポート (Export)</h4>
+              <p className="text-xs text-slate-400 mb-2">
+                メニューを開き、以下の形式で出力できます。
+              </p>
+              <ul className="list-disc list-inside text-xs text-slate-400 space-y-1 ml-1">
+                <li><strong className="text-slate-300">MTG Arena:</strong> アリーナインポート用テキスト</li>
+                <li><strong className="text-slate-300">Simple List:</strong> カード名のみのリスト</li>
+                <li><strong className="text-slate-300">Image (.png):</strong> デッキリスト画像を作成して保存</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="flex gap-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
+            <div className="shrink-0 pt-1 flex gap-1">
+              <div className="p-1.5 bg-slate-800 rounded border border-slate-600 text-slate-300"><List size={16} /></div>
+              <div className="p-1.5 bg-slate-800 rounded border border-slate-600 text-slate-300"><LayoutGrid size={16} /></div>
+            </div>
+            <div>
+              <h4 className="font-bold text-white text-sm mb-1">表示切り替え</h4>
+              <p className="text-xs text-slate-400">
+                カードの表示形式を「リスト（テキスト重視）」と「グリッド（画像重視）」で切り替えます。
+              </p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    ),
+  },
+  {
     id: "account",
     title: "保存とアカウント",
-    icon: LayoutDashboard, // アイコン変更
+    icon: LayoutDashboard,
     content: (
       <div className="space-y-6">
         <section>
@@ -160,7 +243,7 @@ const SECTIONS = [
   {
     id: "tools",
     title: "アリーナ & ツール",
-    icon: Gamepad2, // アイコン変更
+    icon: Gamepad2,
     content: (
       <div className="space-y-6">
         <section>
@@ -205,34 +288,6 @@ const SECTIONS = [
             </div>
           </div>
         </section>
-      </div>
-    ),
-  },
-  {
-    id: "shortcuts",
-    title: "ショートカット",
-    icon: Keyboard,
-    content: (
-      <div className="space-y-4">
-        <h3 className="font-bold text-lg text-white">キーボードショートカット (PC)</h3>
-        <p className="text-sm text-slate-400">
-          以下のキー操作で効率的にデッキ構築が可能です。
-        </p>
-
-        <div className="grid grid-cols-1 gap-2">
-          <div className="flex items-center justify-between bg-slate-800 px-4 py-2 rounded border border-slate-700">
-            <span className="text-sm text-slate-300">検索ボックスへ移動</span>
-            <Kbd>/</Kbd>
-          </div>
-          <div className="flex items-center justify-between bg-slate-800 px-4 py-2 rounded border border-slate-700">
-            <span className="text-sm text-slate-300">カード詳細を閉じる</span>
-            <Kbd>Esc</Kbd>
-          </div>
-          <div className="flex items-center justify-between bg-slate-800 px-4 py-2 rounded border border-slate-700">
-             <span className="text-sm text-slate-300">保存 (Save)</span>
-             <div><Kbd>Ctrl</Kbd> + <Kbd>S</Kbd></div>
-          </div>
-        </div>
       </div>
     ),
   },
