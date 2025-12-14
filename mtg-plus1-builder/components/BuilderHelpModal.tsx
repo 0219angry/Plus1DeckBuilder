@@ -1,6 +1,21 @@
 "use client";
 
-import { X, Search, MousePointerClick, Save, BarChart3, Play, Info, Key, Share2, HelpCircle } from "lucide-react";
+import { 
+  X, 
+  Search, 
+  MousePointerClick, 
+  Save, 
+  BarChart3, 
+  Play, 
+  Info, 
+  Key, 
+  Share2, 
+  HelpCircle, 
+  Gamepad2, 
+  LayoutDashboard, 
+  Keyboard,
+  Filter
+} from "lucide-react";
 import { useState } from "react";
 
 type Props = {
@@ -8,154 +23,214 @@ type Props = {
   onClose: () => void;
 };
 
+// キーボード表示用コンポーネント
+const Kbd = ({ children }: { children: React.ReactNode }) => (
+  <kbd className="px-2 py-0.5 mx-1 bg-slate-800 border border-slate-600 rounded text-[10px] font-mono text-slate-300 shadow-sm">
+    {children}
+  </kbd>
+);
+
 const SECTIONS = [
   {
     id: "basic",
-    title: "基本フロー",
+    title: "基本 & PLUS1ルール",
     icon: MousePointerClick,
     content: (
-      <div className="space-y-4">
-        <h3 className="font-bold text-lg text-blue-400">デッキ作成の基本</h3>
-        <ul className="list-disc list-inside space-y-2 text-slate-300">
-          <li>
-            左側のパネルで<strong className="text-white">「Search」</strong>タブを選び、カードを探します。
-          </li>
-          <li>
-            カードをクリック（またはタップ）すると、デッキ（メインボード）に追加されます。
-          </li>
-          <li>
-            デッキに追加されたカードをクリックすると、枚数が減ります（0枚で削除）。
-          </li>
-          <li>
-            <strong className="text-white">「Save」</strong>ボタンでクラウドに保存し、URLを発行できます。
-          </li>
-        </ul>
+      <div className="space-y-6">
+        <section>
+          <h3 className="font-bold text-lg text-blue-400 mb-2">PLUS1 フォーマットとは？</h3>
+          <div className="bg-blue-900/20 border border-blue-800/50 p-4 rounded-lg">
+            <p className="text-slate-200 mb-2">
+              <strong>「基本セット(Foundations)」</strong> ＋ <strong>「好きなエキスパンション1つ」</strong>
+            </p>
+            <p className="text-sm text-slate-400">
+              この2つのセットに含まれるカードのみを使用して構築する、シンプルかつ奥深い限定構築戦です。
+              当ビルダーでは、エキスパンションを選択すると自動的にフィルタリングがかかります。
+            </p>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="font-bold text-lg text-white mb-2">デッキ作成の流れ</h3>
+          <ul className="list-disc list-inside space-y-2 text-slate-300">
+            <li>
+              <strong className="text-white">セット選択:</strong> 画面右上のドロップダウンから、相棒となるエキスパンションを選びます。
+            </li>
+            <li>
+              <strong className="text-white">カード検索:</strong> 左パネルでカードを探し、クリックしてデッキに追加します。
+            </li>
+            <li>
+              <strong className="text-white">枚数調整:</strong> 追加されたカードをクリックすると1枚減ります（右クリックで1枚追加）。
+            </li>
+          </ul>
+        </section>
+      </div>
+    ),
+  },
+  {
+    id: "account",
+    title: "保存とアカウント",
+    icon: LayoutDashboard, // アイコン変更
+    content: (
+      <div className="space-y-6">
+        <section>
+          <h3 className="font-bold text-lg text-green-400 mb-2">ログインのメリット</h3>
+          <p className="text-slate-300 mb-3">
+            Googleアカウントでログインすると、以下の機能が解放されます。
+          </p>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="flex gap-3 bg-slate-800/50 p-3 rounded border border-slate-700">
+              <div className="shrink-0 bg-blue-500/20 p-2 rounded text-blue-400"><LayoutDashboard size={20} /></div>
+              <div>
+                <h4 className="font-bold text-white text-sm">ダッシュボード管理</h4>
+                <p className="text-xs text-slate-400">作成したデッキを一覧で管理・再編集・削除できます。</p>
+              </div>
+            </div>
+            <div className="flex gap-3 bg-slate-800/50 p-3 rounded border border-slate-700">
+              <div className="shrink-0 bg-purple-500/20 p-2 rounded text-purple-400"><Share2 size={20} /></div>
+              <div>
+                <h4 className="font-bold text-white text-sm">公開設定</h4>
+                <p className="text-xs text-slate-400">「公開」「限定公開」「非公開」をデッキごとに設定できます。</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="font-bold text-lg text-orange-400 mb-2">ゲスト保存（未ログイン）</h3>
+          <div className="bg-orange-900/20 border border-orange-800/50 p-4 rounded-lg">
+            <p className="text-sm text-slate-300">
+              未ログイン状態でも一時的にブラウザに保存されますが、
+              <strong>キャッシュの削除などでデータが消える可能性があります。</strong>
+              <br/>
+              長期的な保存や共有にはログインを推奨します。
+            </p>
+          </div>
+        </section>
       </div>
     ),
   },
   {
     id: "search",
-    title: "検索のコツ",
+    title: "検索テクニック",
     icon: Search,
     content: (
       <div className="space-y-4">
-        <h3 className="font-bold text-lg text-purple-400">高度な検索テクニック</h3>
-        <p className="text-slate-300">
-          検索ボックスでは、Scryfall準拠の構文が一部使用可能です。
+        <h3 className="font-bold text-lg text-purple-400">Scryfall準拠の検索</h3>
+        <p className="text-slate-300 text-sm">
+          検索ボックスでは、カード名だけでなく以下の構文が使用可能です。
         </p>
-        <div className="bg-slate-800 p-3 rounded space-y-2 border border-slate-700">
-          <div>
-            <span className="text-xs font-bold text-slate-500 block">色指定</span>
-            <code className="bg-slate-900 px-1 py-0.5 rounded text-green-400 text-sm">c:red</code>
-            <span className="text-sm ml-2 text-slate-300">赤を含むカード</span>
+        <div className="bg-slate-800 p-4 rounded-lg space-y-3 border border-slate-700">
+          <div className="grid grid-cols-[100px_1fr] gap-2 items-center border-b border-slate-700 pb-2">
+            <span className="text-xs font-bold text-slate-500">色</span>
+            <div>
+              <code className="bg-slate-950 px-1.5 py-0.5 rounded text-green-400 text-xs font-mono mr-2">c:red</code>
+              <span className="text-xs text-slate-400">赤を含むカード</span>
+            </div>
           </div>
-          <div>
-            <span className="text-xs font-bold text-slate-500 block">タイプ指定</span>
-            <code className="bg-slate-900 px-1 py-0.5 rounded text-green-400 text-sm">t:instant</code>
-            <span className="text-sm ml-2 text-slate-300">インスタントのみ</span>
+          <div className="grid grid-cols-[100px_1fr] gap-2 items-center border-b border-slate-700 pb-2">
+            <span className="text-xs font-bold text-slate-500">タイプ</span>
+            <div>
+              <code className="bg-slate-950 px-1.5 py-0.5 rounded text-green-400 text-xs font-mono mr-2">t:creature</code>
+              <span className="text-xs text-slate-400">クリーチャーのみ</span>
+            </div>
           </div>
-          <div>
-            <span className="text-xs font-bold text-slate-500 block">マナコスト</span>
-            <code className="bg-slate-900 px-1 py-0.5 rounded text-green-400 text-sm">mv=3</code>
-            <span className="text-sm ml-2 text-slate-300">マナ総量が3</span>
+          <div className="grid grid-cols-[100px_1fr] gap-2 items-center border-b border-slate-700 pb-2">
+            <span className="text-xs font-bold text-slate-500">マナ総量</span>
+            <div>
+              <code className="bg-slate-950 px-1.5 py-0.5 rounded text-green-400 text-xs font-mono mr-2">mv=3</code>
+              <code className="bg-slate-950 px-1.5 py-0.5 rounded text-green-400 text-xs font-mono mr-2">mv&lt;=2</code>
+            </div>
+          </div>
+          <div className="grid grid-cols-[100px_1fr] gap-2 items-center">
+            <span className="text-xs font-bold text-slate-500">レアリティ</span>
+            <div>
+              <code className="bg-slate-950 px-1.5 py-0.5 rounded text-green-400 text-xs font-mono mr-2">r:rare</code>
+              <span className="text-xs text-slate-400">レアのみ</span>
+            </div>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mt-2">
-          ※ 日本語入力時は自動的に英語名への変換を試みますが、ヒットしない場合は英語名での検索をお試しください。
+        <p className="text-xs text-slate-500">
+          ※ 複数の条件をスペース区切りで組み合わせ可能です。<br/>
+          例: <code className="text-green-400">c:u t:instant mv=1</code> (青の1マナインスタント)
         </p>
-      </div>
-    ),
-  },
-  {
-    id: "deck",
-    title: "デッキ操作",
-    icon: Key,
-    content: (
-      <div className="space-y-4">
-        <h3 className="font-bold text-lg text-orange-400">便利なデッキ編集機能</h3>
-        <ul className="space-y-3 text-slate-300">
-          <li className="flex gap-2">
-            <div className="shrink-0 bg-slate-800 p-1 rounded"><Key size={16} className="text-yellow-400"/></div>
-            <div>
-              <strong>キーカード設定:</strong> カード左上の★マークをクリックすると「キーカード」に設定でき、画像生成時に強調表示されます。
-            </div>
-          </li>
-          <li className="flex gap-2">
-            <div className="shrink-0 bg-slate-800 p-1 rounded"><Share2 size={16} className="text-blue-400"/></div>
-            <div>
-              <strong>サイドボード:</strong> デッキパネル上部の「Side」タブに切り替えてからカードを追加すると、サイドボードに入ります。
-            </div>
-          </li>
-          <li className="flex gap-2">
-            <div className="shrink-0 bg-slate-800 p-1 rounded"><MousePointerClick size={16} className="text-slate-400"/></div>
-            <div>
-              <strong>表示切替:</strong> リストアイコン/グリッドアイコンで表示形式を変更できます。
-            </div>
-          </li>
-        </ul>
       </div>
     ),
   },
   {
     id: "tools",
-    title: "分析・ツール",
-    icon: BarChart3,
+    title: "アリーナ & ツール",
+    icon: Gamepad2, // アイコン変更
     content: (
-      <div className="space-y-4">
-        <h3 className="font-bold text-lg text-green-400">分析とソリティア</h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div className="border border-slate-700 rounded p-3 bg-slate-800/50">
-            <div className="flex items-center gap-2 mb-1 font-bold text-purple-400">
-              <BarChart3 size={16} /> Stats (統計)
-            </div>
-            <p className="text-sm text-slate-300">
-              マナカーブ、色の分布、カードタイプ配分をグラフで確認できます。バランス調整に役立ちます。
+      <div className="space-y-6">
+        <section>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="bg-orange-500/20 p-1.5 rounded text-orange-400"><Gamepad2 size={20} /></div>
+            <h3 className="font-bold text-lg text-white">MTG Arena エクスポート</h3>
+          </div>
+          <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+            <p className="text-sm text-slate-300 mb-3">
+              作成したデッキをMTGアリーナで使用できます。
+            </p>
+            <ol className="list-decimal list-inside space-y-2 text-sm text-slate-400">
+              <li>画面上部のツールバーから<strong className="text-white">「Export」</strong>ボタンをクリック。</li>
+              <li>クリップボードにデッキリストがコピーされます。</li>
+              <li>MTGアリーナを起動し、<strong className="text-white">「Decks」タブ ＞ 「Import」</strong>を選択。</li>
+              <li>自動的にデッキが構築されます。</li>
+            </ol>
+            <p className="text-xs text-yellow-500 mt-3 pt-3 border-t border-slate-700">
+              ※ アリーナ未実装のカードが含まれる場合、インポート時にエラーが出ることがあります。
             </p>
           </div>
-          <div className="border border-slate-700 rounded p-3 bg-slate-800/50">
-            <div className="flex items-center gap-2 mb-1 font-bold text-green-400">
-              <Play size={16} /> Solitaire (一人回し)
+        </section>
+
+        <section>
+          <h3 className="font-bold text-lg text-green-400 mb-3">その他の分析ツール</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="border border-slate-700 rounded p-3 bg-slate-800/30">
+              <div className="flex items-center gap-2 mb-1 font-bold text-green-400 text-sm">
+                <Play size={14} /> Solitaire
+              </div>
+              <p className="text-xs text-slate-400">
+                一人回し機能。初手チェックやドローのシミュレーションが可能。
+              </p>
             </div>
-            <p className="text-sm text-slate-300">
-              初手7枚のシミュレーションができます。「マリガン」や「1ターン進める（ドロー）」操作で事故率を確認できます。
-            </p>
-          </div>
-          <div className="border border-slate-700 rounded p-3 bg-slate-800/50">
-            <div className="flex items-center gap-2 mb-1 font-bold text-yellow-400">
-              <Info size={16} /> Info (詳細)
+            <div className="border border-slate-700 rounded p-3 bg-slate-800/30">
+              <div className="flex items-center gap-2 mb-1 font-bold text-purple-400 text-sm">
+                <BarChart3 size={14} /> Stats
+              </div>
+              <p className="text-xs text-slate-400">
+                マナカーブや色分布のグラフ表示。土地事故の防止に。
+              </p>
             </div>
-            <p className="text-sm text-slate-300">
-              アーキタイプ、コンセプト、ターンごとの動き（ゲームプラン）をメモできます。これらは画像生成時に反映されます。
-            </p>
           </div>
-        </div>
+        </section>
       </div>
     ),
   },
   {
-    id: "save",
-    title: "保存と共有",
-    icon: Save,
+    id: "shortcuts",
+    title: "ショートカット",
+    icon: Keyboard,
     content: (
       <div className="space-y-4">
-        <h3 className="font-bold text-lg text-blue-400">クラウド保存の仕組み</h3>
-        <p className="text-slate-300">
-          「保存して共有」ボタンを押すと、2つのURLが発行されます。
+        <h3 className="font-bold text-lg text-white">キーボードショートカット (PC)</h3>
+        <p className="text-sm text-slate-400">
+          以下のキー操作で効率的にデッキ構築が可能です。
         </p>
-        <div className="space-y-3 mt-2">
-          <div className="bg-slate-800 p-2 rounded border-l-4 border-green-500">
-            <div className="text-xs font-bold text-green-400 mb-1">公開用URL</div>
-            <p className="text-sm text-slate-300">
-              SNSなどでシェアするためのURLです。閲覧のみが可能で、編集はできません。
-            </p>
+
+        <div className="grid grid-cols-1 gap-2">
+          <div className="flex items-center justify-between bg-slate-800 px-4 py-2 rounded border border-slate-700">
+            <span className="text-sm text-slate-300">検索ボックスへ移動</span>
+            <Kbd>/</Kbd>
           </div>
-          <div className="bg-slate-800 p-2 rounded border-l-4 border-red-500">
-            <div className="text-xs font-bold text-red-400 mb-1">編集用URL (重要)</div>
-            <p className="text-sm text-slate-300">
-              あなた専用の編集URLです。ブラウザのブックマークに保存してください。
-              <br/>
-              <span className="text-yellow-400 text-xs">※ URLを紛失すると再編集できなくなります。</span>
-            </p>
+          <div className="flex items-center justify-between bg-slate-800 px-4 py-2 rounded border border-slate-700">
+            <span className="text-sm text-slate-300">カード詳細を閉じる</span>
+            <Kbd>Esc</Kbd>
+          </div>
+          <div className="flex items-center justify-between bg-slate-800 px-4 py-2 rounded border border-slate-700">
+             <span className="text-sm text-slate-300">保存 (Save)</span>
+             <div><Kbd>Ctrl</Kbd> + <Kbd>S</Kbd></div>
           </div>
         </div>
       </div>
@@ -190,26 +265,29 @@ export default function HelpModal({ isOpen, onClose }: Props) {
         {/* Body */}
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar */}
-          <div className="w-40 bg-slate-950/50 border-r border-slate-800 overflow-y-auto">
+          <div className="w-16 md:w-48 bg-slate-950/50 border-r border-slate-800 overflow-y-auto shrink-0">
             {SECTIONS.map((section) => (
               <button
                 key={section.id}
                 onClick={() => setActiveTab(section.id)}
-                className={`w-full text-left px-4 py-3 text-xs font-bold flex items-center gap-2 transition-colors border-l-2 ${
+                className={`w-full text-left px-0 md:px-4 py-3 md:py-3 text-xs md:text-sm font-bold flex flex-col md:flex-row items-center md:gap-3 transition-colors border-l-2 ${
                   activeTab === section.id
                     ? "bg-slate-800 text-blue-400 border-blue-500"
                     : "text-slate-500 hover:text-slate-300 hover:bg-slate-800/50 border-transparent"
                 }`}
               >
-                <section.icon size={16} />
-                {section.title}
+                <section.icon size={20} className="mb-1 md:mb-0" />
+                <span className="hidden md:inline">{section.title}</span>
+                <span className="md:hidden text-[10px]">{section.title.slice(0, 4)}..</span>
               </button>
             ))}
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6 bg-slate-900">
-            {activeContent}
+          <div className="flex-1 overflow-y-auto p-6 bg-slate-900 scrollbar-thin scrollbar-thumb-slate-700">
+            <div className="max-w-xl mx-auto animate-in slide-in-from-right-2 duration-300">
+               {activeContent}
+            </div>
           </div>
         </div>
 
@@ -217,7 +295,7 @@ export default function HelpModal({ isOpen, onClose }: Props) {
         <div className="p-4 border-t border-slate-800 bg-slate-950 flex justify-end">
           <button 
             onClick={onClose}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold transition-colors"
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold transition-colors shadow-lg shadow-blue-900/20"
           >
             閉じる
           </button>
