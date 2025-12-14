@@ -12,7 +12,7 @@ import {
   LayoutDashboard, 
   // 以下、ボタン説明用にアイコンを追加
   Trash2,
-  RefreshCw,
+  Sparkles,
   Upload,
   Download,
   List,
@@ -56,7 +56,7 @@ const SECTIONS = [
               <strong className="text-white">カード検索:</strong> 左パネルでカードを探し、クリックしてデッキに追加します。
             </li>
             <li>
-              <strong className="text-white">枚数調整:</strong> 追加されたカードをクリックすると1枚減ります（右クリックで1枚追加）。
+              <strong className="text-white">調整:</strong> -/+ボタンで枚数を調整、Main/Sideを切り替えてデッキを完成させます。
             </li>
           </ul>
         </section>
@@ -89,13 +89,14 @@ const SECTIONS = [
           <div className="flex gap-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700">
             <div className="shrink-0 pt-1">
               <div className="p-2 bg-slate-800 rounded border border-slate-600 text-slate-300">
-                <RefreshCw size={20} />
+                <Sparkles size={20} />
               </div>
             </div>
             <div>
               <h4 className="font-bold text-white text-sm mb-1">言語統一</h4>
               <p className="text-xs text-slate-400">
-                リスト内のカード名を日本語に統一します（日本語版が存在しないカードは英語のまま維持されます）。
+                リスト内のカード名を選択した言語に統一し、リーガルチェックを行います。
+                このボタンを押してもエラーが出ている場合、それは使用できないカードです。
               </p>
             </div>
           </div>
@@ -141,7 +142,7 @@ const SECTIONS = [
             <div>
               <h4 className="font-bold text-white text-sm mb-1">表示切り替え</h4>
               <p className="text-xs text-slate-400">
-                カードの表示形式を「リスト（テキスト重視）」と「グリッド（画像重視）」で切り替えます。
+                カードの表示形式を「リスト」と「グリッド」で切り替えます。
               </p>
             </div>
           </div>
