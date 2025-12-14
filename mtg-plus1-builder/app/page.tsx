@@ -23,7 +23,7 @@ function LoginController() {
 
     // URLに login=required があり、かつ未ログインの場合
     // ※loading中は判定しない方が安全です
-    if (!loading && loginParam === "required" && !user) {
+    if (!loading && loginParam === "required" && user?.isAnonymous) {
       console.log("Opening Modal!"); // ★これが表示されるか確認
       setIsLoginModalOpen(true);
     } else {  
