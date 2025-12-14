@@ -53,7 +53,7 @@ export default function MyDecksPage() {
   useEffect(() => {
     if (authLoading) return;
     if (!user) {
-      router.push("/");
+      router.push("/?login=required");
       return;
     }
 

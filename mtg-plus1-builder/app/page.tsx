@@ -1,8 +1,43 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowRight, Layers, Image as ImageIcon, Globe, AlertTriangle } from "lucide-react";
 import Footer from "@/components/Footer";
 import ExpansionMarquee from "@/components/ExpansionMarquee";
 import PublicHeader from "@/components/PublicHeader";
+import LoginModal from "@/components/LoginModal"; // ★追加
+import { useEffect, useState, Suspense } from "react"; // ★Suspense追加
+import { useSearchParams, useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
+
+// ★ロジック部分を別コンポーネントに切り出す（Suspense対策）
+function LoginController() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { user } = useAuth();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+
+  useEffect(() => {
+    // 1. URLに login=required があり、かつ未ログインの場合
+    if (searchParams.get("login") === "required" && !user) {
+      setIsLoginModalOpen(true);
+    }
+  }, [searchParams, user]);
+
+  // モーダルを閉じたときの処理
+  const handleClose = () => {
+    setIsLoginModalOpen(false);
+    // URLからクエリパラメータを削除して、リロードしても再表示されないようにする（お好みで）
+    router.replace("/", { scroll: false });
+  };
+
+  return (
+    <LoginModal 
+      isOpen={isLoginModalOpen} 
+      onClose={handleClose} 
+    />
+  );
+}
 
 export default function LandingPage() {
   return (
@@ -10,8 +45,13 @@ export default function LandingPage() {
       
       <PublicHeader />
 
+      {/* ★ログイン制御用コンポーネントを配置し、Suspenseで囲む */}
+      <Suspense fallback={null}>
+        <LoginController />
+      </Suspense>
+
       <main className="flex-1 flex flex-col">
-        {/* (メインコンテンツは変更なし) */}
+        {/* ... (以下、既存のコンテンツそのまま) ... */}
         
         {/* ヒーローセクション */}
         <section className="relative py-20 md:py-32 px-6 overflow-hidden">
