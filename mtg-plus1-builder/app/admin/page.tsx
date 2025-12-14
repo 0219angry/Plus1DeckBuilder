@@ -3,25 +3,61 @@ import Link from 'next/link';
 import { Shield, ExternalLink, Clock, Key, Database, PieChart, TrendingUp } from 'lucide-react';
 import AdminDeleteButton from '@/components/AdminDeleteButton';
 import PublicHeader from '@/components/PublicHeader';
+import { getDeckColorName, getMtgColor } from '@/lib/mtg';
 
 export const dynamic = 'force-dynamic';
 
-// 色ごとのスタイル定義
-const COLOR_MAP: Record<string, { label: string, bg: string, bar: string }> = {
-  W: { label: 'White', bg: 'bg-yellow-900/20', bar: 'bg-yellow-400' },
-  U: { label: 'Blue',  bg: 'bg-blue-900/20',   bar: 'bg-blue-400' },
-  B: { label: 'Black', bg: 'bg-purple-900/20', bar: 'bg-purple-400' },
-  R: { label: 'Red',   bg: 'bg-red-900/20',    bar: 'bg-red-400' },
-  G: { label: 'Green', bg: 'bg-green-900/20',  bar: 'bg-green-400' },
-  C: { label: 'Colorless', bg: 'bg-slate-700', bar: 'bg-slate-400' },
+// ★追加: データ型を定義してTypeScriptに構造を教える
+type AdminDeckData = {
+  id: string;
+  name: string;
+  builderName?: string;
+  selectedSet: string;
+  language: string;
+  createdAt: Date | string;
+  editSecret?: string;
+  colors?: string[]; // ここにcolorsがあることを明示
 };
 
 export default async function AdminPage() {
-  const decks = await getAdminDecks();
+  const rawDecks = await getAdminDecks();
   const stats = await getStats();
 
-  // 色分布の最大値を取得（グラフの100%基準用）
-  const maxColorVal = Math.max(...Object.values(stats.colorStats || {}).map(v => Number(v)), 1);
+  // ★修正1: 取得したデータを型キャストして colors プロパティへのアクセスを許可する
+  const decks = rawDecks as unknown as AdminDeckData[];
+
+  // 1. デッキリストから色の組み合わせを集計
+  const comboStats: Record<string, number> = {};
+  
+  decks.forEach(deck => {
+    // mtg.ts のロジックに合わせて WUBRG 順にソートしてキー化
+    const sortOrder = ['W', 'U', 'B', 'R', 'G', 'C'];
+    const sortedColors = (deck.colors || [])
+      // ★修正2: 引数に型 (string) を明示
+      .sort((a: string, b: string) => sortOrder.indexOf(a) - sortOrder.indexOf(b))
+      .join('');
+    
+    // 色がない場合は 'C' (無色) 扱い、それ以外はそのキー
+    const key = sortedColors === '' ? 'C' : sortedColors;
+    comboStats[key] = (comboStats[key] || 0) + 1;
+  });
+
+  // 2. 集計結果を配列にしてソート（件数が多い順）
+  const sortedComboStats = Object.entries(comboStats)
+    .sort(([, countA], [, countB]) => countB - countA);
+
+  // グラフの100%基準用（最大値）
+  const maxComboVal = sortedComboStats.length > 0 ? sortedComboStats[0][1] : 1;
+
+  // ヘルパー: バーの背景スタイルを生成 (mtg.tsの定義を使用)
+  const getBarStyle = (key: string) => {
+    const colors = key.split('').map(c => getMtgColor(c));
+    if (colors.length === 1) {
+      return { backgroundColor: colors[0].hex };
+    }
+    const stops = colors.map(c => c.hex).join(', ');
+    return { background: `linear-gradient(to right, ${stops})` };
+  };
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 p-8">
@@ -61,29 +97,34 @@ export default async function AdminPage() {
             <div className="p-2 bg-purple-900/20 rounded text-purple-400">
               <PieChart size={20} />
             </div>
-            <span className="text-sm font-bold text-slate-400 uppercase">Color Distribution</span>
+            <span className="text-sm font-bold text-slate-400 uppercase">Archetype Distribution</span>
           </div>
-          <div className="space-y-2">
-            {Object.entries(COLOR_MAP).map(([key, info]) => {
-              const count = (stats.colorStats as any)?.[key] || 0;
-              const percent = (count / maxColorVal) * 100;
+          {/* ★修正3: Tailwind推奨クラスに変更 (max-h-[300px] -> max-h-75) */}
+          <div className="space-y-3 max-h-75 overflow-y-auto pr-2 custom-scrollbar">
+            {sortedComboStats.length === 0 && <div className="text-sm text-slate-500">No data</div>}
+            
+            {sortedComboStats.map(([key, count]) => {
+              const percent = (count / maxComboVal) * 100;
+              const label = getDeckColorName(key.split(''), 'en') || key;
+              const barStyle = getBarStyle(key);
+
               return (
-                <div key={key} className="flex items-center gap-2 text-xs">
-                  <span className="w-4 font-bold text-slate-400">{key}</span>
-                  <div className={`flex-1 h-2 rounded-full overflow-hidden ${info.bg}`}>
+                <div key={key} className="flex items-center gap-2 text-xs group">
+                  <div className="w-24 font-bold text-slate-400 truncate" title={key}>{label}</div>
+                  <div className="flex-1 h-2.5 rounded-full bg-slate-800 overflow-hidden border border-slate-700/50">
                     <div 
-                      className={`h-full ${info.bar}`} 
-                      style={{ width: `${percent}%` }}
+                      className="h-full rounded-full transition-all duration-500 ease-out opacity-90 group-hover:opacity-100"
+                      style={{ width: `${percent}%`, ...barStyle }}
                     />
                   </div>
-                  <span className="w-6 text-right text-slate-300">{count}</span>
+                  <span className="w-6 text-right text-slate-300 font-mono">{count}</span>
                 </div>
               );
             })}
           </div>
         </div>
 
-        {/* 3. 人気セットランキング */}
+        {/* 3. 人気セットランキング (変更なし) */}
         <div className="bg-slate-900 border border-slate-800 p-5 rounded-lg shadow-lg">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-green-900/20 rounded text-green-400">
@@ -117,7 +158,6 @@ export default async function AdminPage() {
 
       {/* デッキリスト (既存) */}
       <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-hidden shadow-xl">
-        {/* ... (既存のテーブルコード) ... */}
         <div className="p-4 border-b border-slate-800 bg-slate-950/30 flex justify-between items-center">
              <h2 className="text-sm font-bold text-slate-400">最新の投稿 (Max 100件)</h2>
         </div>
