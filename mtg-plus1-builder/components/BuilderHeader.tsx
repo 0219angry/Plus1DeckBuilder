@@ -60,16 +60,6 @@ export default function BuilderHeader({
           >
             <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 text-white shadow-lg">+1</span>
           </Link>
-
-          <div className="h-6 w-px bg-slate-800 mx-1 shrink-0 hidden sm:block"></div>
-
-          <input
-            type="text"
-            value={deckName}
-            onChange={(e) => onChangeDeckName(e.target.value)}
-            placeholder="Deck Name..."
-            className="bg-transparent border-none text-white font-bold placeholder-slate-600 focus:ring-0 focus:outline-none min-w-0 w-full max-w-xs text-base sm:text-lg"
-          />
         </div>
 
         {/* 右側: コントロール群 */}
