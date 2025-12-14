@@ -104,11 +104,19 @@ export default async function PublicUserPage({ params }: { params: Promise<{ uid
         {/* プロフィールセクション */}
         <div className="mb-10 p-8 bg-slate-900/40 border border-slate-800/60 rounded-2xl backdrop-blur-sm flex flex-col md:flex-row items-start gap-6">
           
-          {/* アバター（簡易的） */}
+          {/* アバター */}
           <div className="shrink-0">
-             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-slate-700 flex items-center justify-center shadow-xl">
+            {profile?.photoURL ? (
+              <img 
+                src={profile.photoURL} 
+                alt={displayName} 
+                className="w-20 h-20 rounded-full border-2 border-slate-700 shadow-xl object-cover bg-slate-800"
+              />
+            ) : (
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-slate-800 to-slate-900 border-2 border-slate-700 flex items-center justify-center shadow-xl">
                 <UserIcon size={32} className="text-slate-400" />
-             </div>
+              </div>
+            )}
           </div>
 
           <div className="flex-1">
