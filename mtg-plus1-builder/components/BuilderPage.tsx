@@ -43,6 +43,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
   // デッキ情報
   const [deckName, setDeckName] = useState(initialData?.name || "Untitled Deck");
   const [builderName, setBuilderName] = useState(initialData?.builderName || "");
+  const [visibility, setVisibility] = useState<'private' | 'limit' | 'public'>(initialData?.visibility || "limit");
   const [deck, setDeck] = useState<DeckCard[]>(initialData?.cards || []);
   const [sideboard, setSideboard] = useState<DeckCard[]>(initialData?.sideboard || []);
   
@@ -148,6 +149,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           if (parsed.archetype) setArchetype(parsed.archetype);
           if (parsed.colors) setColors(parsed.colors);
           if (parsed.builderName) setBuilderName(parsed.builderName);
+          if (parsed.visibility) setVisibility(parsed.visibility);
           if (parsed.concepts) setConcepts(parsed.concepts);
           
           if (parsed.turnMoves) {
@@ -184,11 +186,12 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
         archetype,
         concepts,
         turnMoves,
+        visibility,
         updatedAt: new Date().toISOString()
       };
       localStorage.setItem("mtg-plus1-deck", JSON.stringify(dataToSave));
     }
-  }, [deck, sideboard, deckName, builderName, selectedSet, language, keyCardIds, colors, archetype, concepts, turnMoves, deckId]);
+  }, [deck, sideboard, deckName, builderName, selectedSet, language, keyCardIds, colors, archetype, concepts, turnMoves, visibility, deckId]);
 
   useEffect(() => {
     // 条件:
@@ -227,6 +230,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
         archetype,
         concepts,
         turnMoves,
+        visibility,
         updatedAt: new Date().toISOString(),
         userId: user?.uid || undefined,
     };
@@ -646,6 +650,16 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
             </select>
             <select value={language} onChange={(e) => setLanguage(e.target.value)} className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-40">
               {LANGUAGES.map((lang) => <option key={lang.code} value={lang.code}>{lang.name}</option>)}
+            </select>
+            <select
+              value={visibility}
+              onChange={(e) => setVisibility(e.target.value as 'private' | 'limit' | 'public')}
+              className="p-1.5 rounded bg-slate-800 border border-slate-700 text-sm font-bold w-48"
+              title="公開範囲を選択"
+            >
+              <option value="private">非公開 (自分のみ)</option>
+              <option value="limit">限定公開 (URLを知っている人)</option>
+              <option value="public">公開 (ユーザーページに掲載)</option>
             </select>
         </div>
 

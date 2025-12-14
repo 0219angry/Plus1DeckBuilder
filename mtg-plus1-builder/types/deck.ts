@@ -10,6 +10,7 @@ export type TurnMove = {
 export type DeckData = {
   name: string;
   builderName?: string;
+  visibility?: 'private' | 'limit' | 'public';
   
   // 独自定義ではなく、インポートしたDeckCard型を使う
   cards: DeckCard[];

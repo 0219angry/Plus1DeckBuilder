@@ -15,6 +15,7 @@ export async function createDeck(data: DeckData) {
   // Firestoreに保存するオブジェクト
   const firestoreData = {
     ...data, // LocalStorageの中身を全て展開
+    visibility: data.visibility || 'limit',
     userId: data.userId || null,
     cards: minifiedCards,
     sideboard: minifiedSideboard,
@@ -51,12 +52,15 @@ export async function getDeck(id: string): Promise<DeckResponse | null> {
 
     const data = doc.data() as any
 
+    const visibility = data.visibility || 'limit';
+
     // editSecret を削除してクライアントに返す
     const { editSecret, ...safeData } = data
 
     return {
       id: doc.id,
       ...safeData,
+      visibility,
     } as DeckResponse
   } catch (error) {
     console.error("getDeck error:", error);
@@ -95,6 +99,7 @@ export async function updateDeck(id: string, secretKey: string, data: DeckData) 
 
   const updatePayload = {
     ...data,
+    visibility: data.visibility || currentData?.visibility || 'limit',
     cards: minifiedCards,
     sideboard: minifiedSideboard,
     updatedAt: new Date().toISOString(),
@@ -125,9 +130,10 @@ export async function getMyDecks(userId: string) {
         language: data.language,
         createdAt: data.createdAt,
         // 色情報があれば取得
-        colors: data.colors || [], 
+        colors: data.colors || [],
         // 編集キーも返す（編集ボタン用）
-        editSecret: data.editSecret, 
+        editSecret: data.editSecret,
+        visibility: data.visibility || 'limit',
       };
     });
   } catch (error) {
@@ -167,20 +173,23 @@ export async function getUserPublicDecks(userId: string) {
       .limit(50) // 大量にあると重いので制限
       .get();
 
-    return snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        name: data.name || "Untitled",
-        selectedSet: data.selectedSet || "-",
-        language: data.language || "-",
-        createdAt: data.createdAt,
-        builderName: data.builderName || "Unknown Builder",
-        colors: data.colors || [],
-        archetype: data.archetype || "",
-        // ★重要: editSecret は返さない！
-      };
-    });
+    return snapshot.docs
+      .map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name || "Untitled",
+          selectedSet: data.selectedSet || "-",
+          language: data.language || "-",
+          createdAt: data.createdAt,
+          builderName: data.builderName || "Unknown Builder",
+          colors: data.colors || [],
+          archetype: data.archetype || "",
+          visibility: data.visibility || 'public',
+          // ★重要: editSecret は返さない！
+        };
+      })
+      .filter(deck => deck.visibility === 'public');
   } catch (error) {
     console.error("Public Fetch Error:", error);
     return [];
