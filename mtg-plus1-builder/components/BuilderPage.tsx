@@ -615,6 +615,12 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
     setSideboard([]);
     setDeckName("Untitled Deck");
     setKeyCardIds([]); 
+    setArchetype("");
+    setColors([]);
+    setConcepts("");
+    setTurnMoves(    [{ id: "1", turn: "1", action: "" },
+    { id: "2", turn: "2", action: "" },
+    { id: "3", turn: "3", action: "" },]);
     // リセット時、もし編集モードならURLはそのままに中身だけ空にする
   };
 
