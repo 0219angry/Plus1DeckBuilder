@@ -20,10 +20,50 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!deck) {
     return { title: "Deck Not Found" };
   }
+
+  // --- OGP画像の生成ロジック (ここから追加) ---
   
+  // ベースURLの定義 (環境変数か、フォールバックとして本番ドメイン)
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.plus1deckbuilder.com';
+  
+  // APIに渡すパラメータを作成
+  const ogSearchParams = new URLSearchParams();
+  ogSearchParams.set('type', 'deck'); // デッキ用デザインを指定
+  ogSearchParams.set('title', deck.name);
+  ogSearchParams.set('subText', deck.builderName || 'Anonymous'); // 製作者名
+
+  // 画像URLを組み立て
+  const ogImageUrl = `${baseUrl}/api/og?${ogSearchParams.toString()}`;
+
+  const title = `${deck.name} | MtG PLUS1`;
+  const description = `Deck by ${deck.builderName || "Unknown"}. Magic: The Gathering Deck Builder for PLUS1 Format.`;
+
   return {
-    title: `${deck.name} | MtG PLUS1`,
-    description: `Deck by ${deck.builderName || "Unknown"}.`,
+    title: title,
+    description: description,
+    // Open Graph (Facebook, Discord, note等用)
+    openGraph: {
+      title: title,
+      description: description,
+      url: `${baseUrl}/deck/${id}`,
+      siteName: 'MtG PLUS1 Deck Builder',
+      images: [
+        {
+          url: ogImageUrl, // ★動的に生成された画像URL
+          width: 1200,
+          height: 630,
+          alt: title,
+        },
+      ],
+      type: 'article',
+    },
+    // Twitter Card (X用)
+    twitter: {
+      card: 'summary_large_image', // 大きな画像を表示する設定
+      title: title,
+      description: description,
+      images: [ogImageUrl], // ★ここも同じ画像
+    },
   };
 }
 
