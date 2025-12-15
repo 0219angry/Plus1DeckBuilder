@@ -83,19 +83,6 @@ export default function PublicHeader({ backHref, title, showNavLinks = true, cus
 
           {!loading && (
             <>
-              {user && (
-                <Link
-                  href="/mydecks"
-                  // 変更点2: My Decks は重要なので md (768px) 以上でアイコンのみ、lg (1024px) 以上でテキストありにする
-                  className="hidden md:inline-flex items-center gap-2 px-3 py-2 text-slate-300 hover:text-white hover:bg-slate-900 rounded-lg transition-colors text-sm font-bold"
-                  title="My Decks"
-                >
-                  <LayoutGrid size={16} />
-                  {/* テキストは lg 以上でのみ表示 */}
-                  <span className="hidden lg:inline">My Decks</span>
-                </Link>
-              )}
-
               <Link
                 href="/builder"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full font-bold text-sm transition-all shadow-lg shadow-blue-900/20 whitespace-nowrap"
