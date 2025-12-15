@@ -21,6 +21,10 @@ export default function Footer() {
             <Map size={14} />
             開発状況・不具合
           </Link>
+          <Link href="/admin" className="hover:text-green-400 transition-colors flex items-center gap-1.5">
+            <Map size={14} />
+            管理者ページ
+          </Link>
         </div>
       </div>
 
