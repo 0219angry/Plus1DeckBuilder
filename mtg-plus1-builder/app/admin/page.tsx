@@ -99,12 +99,21 @@ export default async function AdminPage() {
             </div>
             <span className="text-sm font-bold text-slate-400 uppercase">Archetype Distribution</span>
           </div>
-          {/* ★修正3: Tailwind推奨クラスに変更 (max-h-[300px] -> max-h-75) */}
+          
           <div className="space-y-3 max-h-75 overflow-y-auto pr-2 custom-scrollbar">
-            {sortedComboStats.length === 0 && <div className="text-sm text-slate-500">No data</div>}
+            {/* ★修正A: データがない場合の判定を stats.archetypeStats に変更 */}
+            {(!stats.archetypeStats || stats.archetypeStats.length === 0) && (
+               <div className="text-sm text-slate-500">No data</div>
+            )}
             
-            {sortedComboStats.map(([key, count]) => {
-              const percent = (count / maxComboVal) * 100;
+            {/* ★修正B: ループ対象を変更し、オブジェクトとして受け取る ({ key, count }) */}
+            {(stats.archetypeStats || []).map(({ key, count }) => {
+              
+              // ★修正C: 最大値の計算を stats.archetypeStats の先頭から取るように変更
+              // (ソート済みなので先頭が最大)
+              const maxVal = stats.archetypeStats?.[0]?.count || 1;
+              const percent = (count / maxVal) * 100;
+              
               const label = getDeckColorName(key.split(''), 'en') || key;
               const barStyle = getBarStyle(key);
 
@@ -175,7 +184,7 @@ export default async function AdminPage() {
             <tbody className="divide-y divide-slate-800">
               {decks.map((deck) => (
                 <tr key={deck.id} className="hover:bg-slate-800/50 transition-colors group">
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-2">
                     <div className="flex flex-col">
                       <span className="font-bold text-white text-base">{deck.name}</span>
                       <span className="text-xs text-slate-500 font-mono flex items-center gap-1 mt-1">
