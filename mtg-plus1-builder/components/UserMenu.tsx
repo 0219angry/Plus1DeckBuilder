@@ -7,8 +7,6 @@ import Link from "next/link";
 export default function UserMenu() {
   const { user, loading, login, logout } = useAuth();
 
-  console.log(user);
-
   if (loading) {
     return (
       <div className="w-8 h-8 flex items-center justify-center text-slate-600">
