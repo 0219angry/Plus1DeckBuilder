@@ -3,11 +3,20 @@
 import { db } from '@/lib/firebaseAdmin'
 import { revalidatePath } from 'next/cache'
 
-// 統計データの型定義
-export type ArchetypeStat = {
+
+export type StatItem = {
   key: string;
   count: number;
-  label: string;
+};
+
+// 全体の統計データの型
+export type DashboardStats = {
+  total: number;
+  sampleSize: number;
+  strategyStats: StatItem[];   // ★変更: アグロ/コントロール等の集計
+  colorComboStats: StatItem[]; // ★変更: 色の組み合わせ (UB, RGW...)
+  colorStats: StatItem[];      // 単色 (U, B, R...)
+  setStats: StatItem[];        // セット
 };
 
 // 全デッキ取得（最新100件）
@@ -52,119 +61,81 @@ export async function deleteDeckAsAdmin(id: string) {
   }
 }
 
-// 統計情報の取得（最新500件を分析）
-export async function getStats() {
+export async function getStats(): Promise<DashboardStats> {
   if (!db) return { 
-    total: 0, 
-    archetypeStats: [], // 配列に変更（グラフ表示用）
-    setStats: [] 
+    total: 0, sampleSize: 0, 
+    strategyStats: [], colorComboStats: [], colorStats: [], setStats: [] 
   };
 
   try {
-    // 1. 全体の総数
     const countSnapshot = await db.collection('decks').count().get();
     const totalCount = countSnapshot.data().count;
 
-    // 2. 分析用に最新500件を取得
     const analyzeSnapshot = await db.collection('decks')
       .orderBy('createdAt', 'desc')
       .limit(500) 
       .get();
 
-    // ★修正: キーを色の組み合わせにする
-    const comboCounts: Record<string, number> = {};
+    // 集計用オブジェクト
+    const strategyCounts: Record<string, number> = {}; // アグロなど
+    const comboCounts: Record<string, number> = {};    // 色合わせ
+    const colorCounts: Record<string, number> = { W: 0, U: 0, B: 0, R: 0, G: 0, C: 0 };
     const setCounts: Record<string, number> = {};
     
-    // WUBRG順に並べるための配列
     const sortOrder = ['W', 'U', 'B', 'R', 'G', 'C'];
 
     analyzeSnapshot.docs.forEach(doc => {
       const data = doc.data();
       
-      // ★修正: 色ごとのループではなく、配列をソートして結合し「キー」を作る
+      // 1. アーキタイプ（戦略）の集計
+      // DBのカラム名が 'archetype' だと仮定しています
+      const strategyKey = data.archetype || 'unknown'; 
+      strategyCounts[strategyKey] = (strategyCounts[strategyKey] || 0) + 1;
+
+      // 2. 色の集計
       const colors = (data.colors as string[] || []);
-      
-      const sortedColors = colors
+      const setCode = data.selectedSet;
+
+      // 色の組み合わせ (Color Combo)
+      const sortedCombo = colors
         .sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b))
         .join('');
-      
-      // 色なしは 'C'、それ以外は 'WU', 'UB' などの文字列になる
-      const key = sortedColors === '' ? 'C' : sortedColors;
-      
-      // そのキー（組み合わせ）をカウント
-      comboCounts[key] = (comboCounts[key] || 0) + 1;
+      const comboKey = sortedCombo === '' ? 'C' : sortedCombo;
+      comboCounts[comboKey] = (comboCounts[comboKey] || 0) + 1;
 
-      // セットの集計 (変更なし)
-      const setCode = data.selectedSet;
+      // 単色 (Color Frequency)
+      if (colors.length === 0) {
+        colorCounts['C']++;
+      } else {
+        const uniqueColors = Array.from(new Set(colors));
+        uniqueColors.forEach(c => {
+          if (colorCounts[c] !== undefined) colorCounts[c]++;
+        });
+      }
+
+      // セット集計
       if (setCode) {
         setCounts[setCode] = (setCounts[setCode] || 0) + 1;
       }
     });
 
-    // ★修正: フロントエンドで扱いやすいように配列に変換してソート
-    const sortedArchetypes = Object.entries(comboCounts)
-      .map(([key, count]) => ({ key, count }))
-      .sort((a, b) => b.count - a.count);
-
-    // セットを集計数順にソート
-    const sortedSets = Object.entries(setCounts)
-      .map(([code, count]) => ({ code, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    const toSortedArray = (record: Record<string, number>): StatItem[] => {
+      return Object.entries(record)
+        .map(([key, count]) => ({ key, count }))
+        .sort((a, b) => b.count - a.count);
+    };
 
     return { 
       total: totalCount,
       sampleSize: analyzeSnapshot.size,
-      archetypeStats: sortedArchetypes, // ここが変わりました
-      setStats: sortedSets
+      strategyStats: toSortedArray(strategyCounts), // アグロ等
+      colorComboStats: toSortedArray(comboCounts),  // 色組み合わせ
+      colorStats: toSortedArray(colorCounts),       // 単色頻度
+      setStats: toSortedArray(setCounts)            // セット
     };
 
   } catch (error) {
     console.error("Stats error:", error);
-    return { total: 0, archetypeStats: [], setStats: [] };
-  }
-}
-
-export async function getArchetypeStats(): Promise<ArchetypeStat[]> {
-  try {
-    // colorsフィールドだけを取得することで転送量を削減（読み取り回数はドキュメント数分かかります）
-    const snapshot = await db
-      .collection('decks')
-      .select('colors') 
-      .get();
-
-    const comboStats: Record<string, number> = {};
-    const sortOrder = ['W', 'U', 'B', 'R', 'G', 'C'];
-
-    snapshot.docs.forEach((doc) => {
-      const data = doc.data();
-      // データが存在しない、または配列でない場合のガード
-      const colors: string[] = Array.isArray(data.colors) ? data.colors : [];
-
-      // WUBRG順にソートしてキー化 (例: ['U', 'W'] -> "WU")
-      const sortedColors = colors
-        .sort((a, b) => sortOrder.indexOf(a) - sortOrder.indexOf(b))
-        .join('');
-
-      // 色がない、または空文字の場合は 'C' (Colorless)
-      const key = sortedColors === '' ? 'C' : sortedColors;
-
-      comboStats[key] = (comboStats[key] || 0) + 1;
-    });
-
-    // 件数順にソートして配列化
-    const sortedStats = Object.entries(comboStats)
-      .map(([key, count]) => ({
-        key,
-        count,
-        label: key, // 必要に応じて表示名変換関数を通す
-      }))
-      .sort((a, b) => b.count - a.count);
-
-    return sortedStats;
-
-  } catch (error) {
-    console.error('Failed to fetch archetype stats:', error);
-    return [];
+    return { total: 0, sampleSize: 0, strategyStats:[], colorComboStats: [], colorStats: [], setStats: [] };
   }
 }

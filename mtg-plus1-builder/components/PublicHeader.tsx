@@ -18,7 +18,7 @@ export default function PublicHeader({ backHref, title, showNavLinks = true, cus
 
   return (
     <header className="border-b border-slate-800/50 bg-slate-950/70 backdrop-blur-md sticky top-0 z-10">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
+      <div className="w-full px-4 h-16 flex items-center justify-between gap-4">
 
         {/* 左側: ロゴ・パンくず 
             flex-1 を追加して、可能な限りスペースを確保するようにします */}
