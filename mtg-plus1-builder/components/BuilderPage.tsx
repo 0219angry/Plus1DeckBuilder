@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { Card, DeckCard, EXPANSIONS, LANGUAGES, Expansion, TurnMove } from "@/types";
 import { DeckData } from "@/types/deck"; // 型定義ファイルをインポート
@@ -33,6 +33,7 @@ type BuilderPageProps = {
 
 export default function BuilderPage({ initialData, deckId, editKey }: BuilderPageProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
 
   // --- State定義 (初期値をPropsから設定可能に) ---
@@ -204,6 +205,19 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
     }
   }, [user, builderName]);
 
+  useEffect(() => {
+    if (searchParams.get('saved') === 'true') {
+      setIsShareModalOpen(true);
+      
+      // オプション: URLから saved=true を消して、リロード時に再表示されないようにする
+      // (Next.jsのルーターを使ってパラメータを除去したURLに置換)
+      const newParams = new URLSearchParams(searchParams.toString());
+      newParams.delete('saved');
+      const newPath = `${window.location.pathname}?${newParams.toString()}`;
+      window.history.replaceState(null, '', newPath);
+    }
+  }, [searchParams]);
+
   // --- Server Actions: クラウド保存 ---
   const handleCloudSave = async () => {
     if (deck.length === 0 && sideboard.length === 0) {
@@ -250,7 +264,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
             if (result.success) {
                 // ローカルストレージをクリアするかは運用次第ですが、
                 // ここでは編集ページへの遷移を優先します
-                router.push(result.editUrl!); 
+                router.push(`${result.editUrl}&saved=true`); 
             }
         }
     } catch (e) {
