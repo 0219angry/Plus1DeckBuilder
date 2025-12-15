@@ -16,8 +16,9 @@ import DeckCard from "@/components/DeckCase"; // ★追加: コンポーネン�
 import PublicHeader from "@/components/PublicHeader";
 
 // ---------------------------------------------------------
-// 1. 動的メタデータ生成
+// 1. 動的メタデータ生成 (OGP対応版)
 // ---------------------------------------------------------
+
 export async function generateMetadata({ params }: { params: Promise<{ uid: string }> }): Promise<Metadata> {
   const { uid } = await params;
   const realUid = await getUidByCustomId(uid);
@@ -29,9 +30,46 @@ export async function generateMetadata({ params }: { params: Promise<{ uid: stri
   const profile = await getUserProfile(realUid);
   const displayName = profile?.displayName || profile?.customId || "User";
 
+  // --- OGP画像のURL生成ロジック ---
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://www.plus1deckbuilder.com';
+  
+  const ogSearchParams = new URLSearchParams();
+  // 万能APIの "profile" モードを指定
+  ogSearchParams.set('type', 'profile'); 
+  // プロフィール画面では「タイトル」としてユーザー名を表示する仕様にしました
+  ogSearchParams.set('title', displayName); 
+
+  const ogImageUrl = `${baseUrl}/api/og?${ogSearchParams.toString()}`;
+
+  const title = `${displayName}'s Decks - MtG PLUS1`;
+  const description = `Check out Magic: The Gathering decks created by ${displayName}.`;
+
   return {
-    title: `${displayName}'s Decks - MtG PLUS1`,
-    description: `Check out Magic: The Gathering decks created by ${displayName}.`,
+    title: title,
+    description: description,
+    // Open Graph (Facebook, Discord, note等)
+    openGraph: {
+      title: title,
+      description: description,
+      url: `${baseUrl}/user/${uid}`,
+      siteName: 'MtG PLUS1',
+      images: [
+        {
+          url: ogImageUrl,
+          width: 1200,
+          height: 630,
+          alt: `${displayName}'s Profile`,
+        },
+      ],
+      type: 'profile', // または 'website'
+    },
+    // Twitter Card (X)
+    twitter: {
+      card: 'summary_large_image', // 大きい画像を表示
+      title: title,
+      description: description,
+      images: [ogImageUrl],
+    },
   };
 }
 
