@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { DeckCard, Card, TurnMove } from "@/types";
-import { List as ListIcon, LayoutGrid, Check, RefreshCw, Download, ChevronDown, Upload, Image as ImageIcon, Loader2, MessageSquare, Trash2 } from "lucide-react";
+import { List as ListIcon, LayoutGrid, Check, RefreshCw, Download, Sparkles, ChevronDown, Upload, Image as ImageIcon, Loader2, MessageSquare, Trash2 } from "lucide-react";
 import CardView from "./CardView";
 import ImportModal from "./ImportModal";
 import { generateDeckImageCanvas, DeckImageConfig } from "@/lib/deck-image-generator";
@@ -257,7 +257,7 @@ export default function DeckPanel({
                     </button>
 
                     <button onClick={onUnifyLanguage} disabled={isProcessing} className="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded text-slate-300 transition-colors" title="全カードの言語を統一">
-                    <RefreshCw size={14} className={isProcessing ? "animate-spin" : ""} />
+                    <Sparkles size={14} className={isProcessing ? "animate-spin" : ""} />
                     </button>
 
                     <button onClick={() => setShowImportModal(true)} className="flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors border border-slate-600" title="テキストからデッキをインポート"><Upload size={14} /><span>Import</span></button>

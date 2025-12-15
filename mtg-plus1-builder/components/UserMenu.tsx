@@ -84,7 +84,6 @@ export default function UserMenu() {
           className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold text-sm transition-all shadow-lg shadow-blue-900/20 hover:scale-105 active:scale-95"
         >
           <LogIn size={16} />
-          <span>Login</span>
         </button>
       </div>
     );

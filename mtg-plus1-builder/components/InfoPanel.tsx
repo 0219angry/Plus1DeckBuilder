@@ -2,26 +2,7 @@ import { Info, Plus, Trash2, Check, ChevronDown, Languages, Search, User } from 
 import { useState, useRef, useEffect } from "react";
 import { TurnMove } from "@/types";
 import { MTG_COLORS, getDeckColorName } from "@/lib/mtg";
-
-const ARCHETYPES_DATA = [
-  { id: 'aggro', ja: 'アグロ', en: 'Aggro' },
-  { id: 'control', ja: 'コントロール', en: 'Control' },
-  { id: 'midrange', ja: 'ミッドレンジ', en: 'Midrange' },
-  { id: 'combo', ja: 'コンボ', en: 'Combo' },
-  { id: 'ramp', ja: 'ランプ', en: 'Ramp' },
-  { id: 'tempo', ja: 'テンポ', en: 'Tempo' },
-  { id: 'clock_permission', ja: 'クロック・パーミッション', en: 'Clock Permission' },
-  { id: 'reanimate', ja: 'リアニメイト', en: 'Reanimate' },
-  { id: 'stompy', ja: 'ストンピィ', en: 'Stompy' },
-  { id: 'tokens', ja: 'トークン', en: 'Tokens' },
-  { id: 'tribal', ja: '部族', en: 'Tribal' },
-  { id: 'burn', ja: 'バーン', en: 'Burn' },
-  { id: 'prowess', ja: '果敢', en: 'Prowess' },
-  { id: 'sacrifice', ja: 'サクリファイス', en: 'Sacrifice' },
-  { id: 'artifacts', ja: 'アーティファクト', en: 'Artifacts' },
-  { id: 'enchantments', ja: 'エンチャント', en: 'Enchantments' },
-  { id: 'mill', ja: 'ライブラリーアウト', en: 'Mill' },
-];
+import { ARCHETYPES_DATA } from "@/lib/constants";
 
 type Props = {
   colors: string[];

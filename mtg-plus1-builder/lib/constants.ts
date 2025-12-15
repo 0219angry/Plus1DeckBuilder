@@ -23,3 +23,23 @@ export const VISIBILITY_LABELS: Record<VisibilityType, string> = {
   private: 'Private',
   limit: 'Limited',
 };
+
+export const ARCHETYPES_DATA = [
+  { id: 'aggro', ja: 'アグロ', en: 'Aggro' },
+  { id: 'control', ja: 'コントロール', en: 'Control' },
+  { id: 'midrange', ja: 'ミッドレンジ', en: 'Midrange' },
+  { id: 'combo', ja: 'コンボ', en: 'Combo' },
+  { id: 'ramp', ja: 'ランプ', en: 'Ramp' },
+  { id: 'tempo', ja: 'テンポ', en: 'Tempo' },
+  { id: 'clock_permission', ja: 'クロック・パーミッション', en: 'Clock Permission' },
+  { id: 'reanimate', ja: 'リアニメイト', en: 'Reanimate' },
+  { id: 'stompy', ja: 'ストンピィ', en: 'Stompy' },
+  { id: 'tokens', ja: 'トークン', en: 'Tokens' },
+  { id: 'tribal', ja: '部族', en: 'Tribal' },
+  { id: 'burn', ja: 'バーン', en: 'Burn' },
+  { id: 'prowess', ja: '果敢', en: 'Prowess' },
+  { id: 'sacrifice', ja: 'サクリファイス', en: 'Sacrifice' },
+  { id: 'artifacts', ja: 'アーティファクト', en: 'Artifacts' },
+  { id: 'enchantments', ja: 'エンチャント', en: 'Enchantments' },
+  { id: 'mill', ja: 'ライブラリーアウト', en: 'Mill' },
+];
