@@ -9,7 +9,8 @@ import {
   Globe, 
   Layout, 
   Eye, 
-  Loader2 // ローディング表示用にインポート
+  Loader2, // ローディング表示用にインポート
+  Share2
 } from "lucide-react";
 import UserMenu from "./UserMenu";
 // ★作成したフックをインポート (保存したパスに合わせてください)
@@ -27,6 +28,8 @@ type Props = {
   onSave: () => void;
   onOpenHelp: () => void;
   isSaving: boolean;
+  deckId?: string;
+  onOpenShare?: () => void;
 };
 
 export default function BuilderHeader({
@@ -40,7 +43,9 @@ export default function BuilderHeader({
   onVisibilityChange,
   onSave,
   onOpenHelp,
-  isSaving
+  isSaving,
+  deckId,
+  onOpenShare
 }: Props) {
   const { user } = useAuth();
   
@@ -131,6 +136,17 @@ export default function BuilderHeader({
           >
             <HelpCircle size={20} />
           </button>
+
+          {/* シェアボタン */}
+          {deckId && (
+            <button 
+              onClick={onOpenShare}
+              title="共有"
+              className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-800 rounded-full transition-colors"
+            >
+              <Share2 size={20} />
+            </button>
+          )}
 
           {/* 保存ボタン */}
           <button
