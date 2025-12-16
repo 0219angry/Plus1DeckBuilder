@@ -741,7 +741,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
       {/* =========================================
           Desktop View (md以上) - 左右分割パネル
          ========================================= */}
-      <div className="hidden md:flex flex-1 overflow-hidden relative z-0">
+      <div className="hidden md:flex flex-1 flex-col overflow-hidden relative z-0">
         <PanelGroup direction="horizontal">
           
           {/* Left Panel */}
@@ -859,6 +859,10 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
                   </div>
                 </div>
              </div>
+             {/* Mobile用: メニューの一番下に追加 */}
+              <div className="pt-4 pb-8">
+                <Footer />
+              </div>
           </div>
         </div>
 
