@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import Link from "next/link";
-import { Smartphone, Touch, Sparkles, Download, ShieldCheck, ArrowRight, Wand2, Zap } from "lucide-react";
+import { Smartphone, Pointer, Sparkles, Download, ShieldCheck, ArrowRight, Wand2, Zap } from "lucide-react";
 import PublicHeader from "@/components/PublicHeader";
 import Footer from "@/components/Footer";
 
@@ -59,11 +59,11 @@ export default function MobilePage() {
         <section className="py-16 px-6 bg-slate-900/40 border-y border-slate-900">
           <div className="max-w-5xl mx-auto space-y-8">
             <div className="flex items-center gap-3 text-white">
-              <Touch size={24} className="text-cyan-300" />
+              <Pointer size={24} className="text-cyan-300" />
               <h2 className="text-xl sm:text-2xl font-bold">スマホでの使いやすさを最優先</h2>
             </div>
             <div className="grid md:grid-cols-3 gap-6">
-              {[{ title: "タップ操作に最適化", desc: "カード行を厚めにし、指先でタップしやすいスペーシングを採用。スワイプでスクロールしやすく、見たい情報に素早くアクセスできます。", icon: <Touch className="text-cyan-300" size={20} /> }, { title: "高速検索", desc: "入力ごとに即座に反映される検索と、PLUS1専用のフィルターで目的のカードを素早く絞り込み。通信量も控えめです。", icon: <Zap className="text-yellow-300" size={20} /> }, { title: "1タップコピー", desc: "完成したデッキリストは1タップでコピー可能。MTGアリーナへのインポートもスマホだけで完結します。", icon: <Wand2 className="text-purple-300" size={20} /> }].map((item) => (
+              {[{ title: "タップ操作に最適化", desc: "カード行を厚めにし、指先でタップしやすいスペーシングを採用。スワイプでスクロールしやすく、見たい情報に素早くアクセスできます。", icon: <Pointer className="text-cyan-300" size={20} /> }, { title: "高速検索", desc: "入力ごとに即座に反映される検索と、PLUS1専用のフィルターで目的のカードを素早く絞り込み。通信量も控えめです。", icon: <Zap className="text-yellow-300" size={20} /> }, { title: "1タップコピー", desc: "完成したデッキリストは1タップでコピー可能。MTGアリーナへのインポートもスマホだけで完結します。", icon: <Wand2 className="text-purple-300" size={20} /> }].map((item) => (
                 <div key={item.title} className="p-5 rounded-2xl bg-slate-950 border border-slate-800/70 shadow-sm space-y-3">
                   <div className="inline-flex items-center gap-2 text-sm font-semibold text-white">
                     {item.icon}
