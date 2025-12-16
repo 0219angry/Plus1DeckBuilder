@@ -442,8 +442,162 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
   };
 
   const unifyDeckLanguage = async () => {
-      // (Implementation omitted for brevity, use original if needed)
-      alert("Language unification logic placeholder");
+    const BASIC_LANDS = ["Plains", "Island", "Swamp", "Mountain", "Forest", "Wastes"];
+    if ((deck.length === 0 && sideboard.length === 0) || !confirm(`デッキ内の言語を「${language === 'ja' ? '日本語' : '英語'}」に統一しますか？`)) return;
+
+    setProcessing(true);
+    try {
+      const allCards = [...deck, ...sideboard];
+      const uniqueNames = Array.from(new Set(allCards.map(c => c.name)));
+      const bestCardMap = new Map<string, Card>();
+      const BATCH_SIZE = 20;
+
+      const basicLandNames = uniqueNames.filter(name => BASIC_LANDS.includes(name));
+      const otherNames = uniqueNames.filter(name => !BASIC_LANDS.includes(name));
+
+      const getScore = (c: Card) => {
+        let score = 0;
+        const cSet = c.set.toLowerCase();
+        if (cSet === selectedSet.toLowerCase()) score += 10000;
+        else if (cSet === 'fdn') score += 5000;
+        if (c.lang === language) score += 1000;
+        else if (c.lang === 'en') score += 500;
+        if (cSet === 'plist' || cSet === 'mb1' || cSet.length > 3) score -= 100;
+        if (!isNaN(Number(c.collector_number))) score += 50; 
+        if (BASIC_LANDS.includes(c.name) && c.full_art) score += 20;
+        return score;
+      };
+
+      // Phase 1: Basic Lands
+      if (basicLandNames.length > 0) {
+        const landConditions = basicLandNames.map(name => `name:"${name}"`).join(" OR ");
+        const landQuery = `(${landConditions}) (set:${selectedSet} OR set:fdn) (lang:${language} OR lang:en) unique:prints`;
+        try {
+          const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(landQuery)}`);
+          if (res.ok) {
+            const data = await res.json();
+            const foundLands: Card[] = data.data || [];
+            basicLandNames.forEach(name => {
+              const candidates = foundLands.filter(c => c.name === name);
+              if (candidates.length > 0) {
+                candidates.sort((a, b) => getScore(b) - getScore(a));
+                bestCardMap.set(name, formatCardData(candidates[0]));
+              }
+            });
+          }
+        } catch (e) { console.error("Land search error", e); }
+      }
+
+      // Phase 2: Other Cards
+      const foundNames = new Set<string>();
+      for (let i = 0; i < otherNames.length; i += BATCH_SIZE) {
+        const batchNames = otherNames.slice(i, i + BATCH_SIZE);
+        const nameConditions = batchNames.map(name => `name:"${name}"`).join(" OR ");
+        const setCondition = selectedSet === 'fdn' ? `set:fdn` : `(set:${selectedSet} OR set:fdn)`;
+        const query = `(${nameConditions}) ${setCondition} (lang:${language} OR lang:en)`;
+        try {
+          const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query + " unique:prints")}`);
+          if (res.ok) {
+            const data = await res.json();
+            const foundCards: Card[] = data.data || [];
+            batchNames.forEach(name => {
+              const candidates = foundCards.filter(c => c.name === name);
+              if (candidates.length > 0) {
+                candidates.sort((a, b) => getScore(b) - getScore(a));
+                bestCardMap.set(name, formatCardData(candidates[0]));
+                foundNames.add(name);
+              }
+            });
+          }
+        } catch (e) { console.error("Priority search error", e); }
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      // Phase 3: Fallback
+      const missingNames = otherNames.filter(name => !foundNames.has(name));
+      if (missingNames.length > 0) {
+        for (let i = 0; i < missingNames.length; i += BATCH_SIZE) {
+          const batchNames = missingNames.slice(i, i + BATCH_SIZE);
+          const nameConditions = batchNames.map(name => `name:"${name}"`).join(" OR ");
+          const query = `(${nameConditions}) (lang:${language} OR lang:en) unique:prints`;
+          try {
+            const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`);
+            if (res.ok) {
+              const data = await res.json();
+              const foundCards: Card[] = data.data || [];
+              batchNames.forEach(name => {
+                const candidates = foundCards.filter(c => c.name === name);
+                if (candidates.length > 0) {
+                  candidates.sort((a, b) => getScore(b) - getScore(a));
+                  if (!bestCardMap.has(name)) {
+                    bestCardMap.set(name, formatCardData(candidates[0]));
+                  }
+                }
+              });
+            }
+          } catch (e) { console.error("Fallback search error", e); }
+          await new Promise(r => setTimeout(r, 100));
+        }
+      }
+
+      // Phase 4: Pseudo-Japanese Patch
+      if (language === 'ja') {
+        const hasJapanese = (str?: string) => str && /[ぁ-んァ-ン一-龠]/.test(str);
+        const targets = Array.from(bestCardMap.entries()).filter(([_, card]) => {
+          if (card.lang !== 'ja') return true;
+          return !hasJapanese(card.printed_name);
+        });
+
+        if (targets.length > 0) {
+          const oracleIds = targets.map(([_, card]) => (card as any).oracle_id).filter(Boolean);
+          for (let i = 0; i < oracleIds.length; i += BATCH_SIZE) {
+             const batchIds = oracleIds.slice(i, i + BATCH_SIZE);
+             const idConditions = batchIds.map(oid => `oracle_id:${oid}`).join(" OR ");
+             const query = `(${idConditions}) lang:ja unique:prints`;
+             try {
+                const res = await fetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(query)}`);
+                if (res.ok) {
+                   const data = await res.json();
+                   const foundJaCards: any[] = data.data || [];
+                   targets.forEach(([name, originalCard]) => {
+                      const jaMatch = foundJaCards.find(c => 
+                        c.oracle_id === (originalCard as any).oracle_id &&
+                        (hasJapanese(c.printed_name) || (c.card_faces && c.card_faces.some((f:any) => hasJapanese(f.printed_name))))
+                      );
+                      if (jaMatch) {
+                         const formattedJa = formatCardData(jaMatch);
+                         bestCardMap.set(name, {
+                           ...originalCard,
+                           printed_name: formattedJa.printed_name, 
+                           card_faces: originalCard.card_faces?.map((face: any, idx: number) => ({
+                               ...face,
+                               printed_name: formattedJa.card_faces?.[idx]?.printed_name || face.printed_name
+                           })) || formattedJa.card_faces
+                         });
+                      }
+                   });
+                }
+             } catch (e) { console.error("Pseudo-Japanese patch error", e); }
+             await new Promise(r => setTimeout(r, 100));
+          }
+        }
+      }
+
+      const updateList = (list: DeckCard[]) => {
+        return list.map(card => {
+          const bestVersion = bestCardMap.get(card.name);
+          if (bestVersion) return { ...bestVersion, quantity: card.quantity };
+          return card;
+        });
+      };
+      setDeck(updateList(deck));
+      setSideboard(updateList(sideboard));
+    } catch (error) {
+      console.error(error);
+      alert("変換中にエラーが発生しました。");
+    } finally {
+      setProcessing(false);
+    }
   };
 
   const handleImportDeck = (newMain: DeckCard[], newSide: DeckCard[], importedName?: string) => {
