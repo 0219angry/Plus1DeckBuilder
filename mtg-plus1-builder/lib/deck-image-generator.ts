@@ -55,6 +55,35 @@ const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number,
   return lines;
 };
 
+// マナシンボルをCanvasに直接描画する関数
+const drawManaSymbol = (ctx: CanvasRenderingContext2D, symbol: string, x: number, y: number, size: number) => {
+  const palette = MANA_PALETTE[symbol] || MANA_PALETTE.X;
+  const radius = size / 2;
+  const centerX = x + radius;
+  const centerY = y + radius;
+
+  ctx.save();
+  // 円の背景
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.fillStyle = palette.bg;
+  ctx.fill();
+  
+  // ボーダー
+  ctx.strokeStyle = palette.border;
+  ctx.lineWidth = size * 0.1; // サイズに応じた太さ
+  ctx.stroke();
+
+  // 文字
+  ctx.fillStyle = palette.text;
+  ctx.font = `bold ${size * 0.65}px sans-serif`; // サイズに応じたフォント
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  // 微調整: CanvasのtextBaselineはフォントによってズレることがあるのでYを少し調整
+  ctx.fillText(symbol, centerX, centerY + (size * 0.05));
+  ctx.restore();
+};
+
 // メインデッキのクリーチャー/スペルアイコン描画
 const drawIcon = (ctx: CanvasRenderingContext2D, type: "creature" | "spell", x: number, y: number, size: number, color: string) => {
   ctx.save();
