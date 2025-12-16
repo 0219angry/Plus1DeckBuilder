@@ -291,6 +291,8 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
       
       const primaryQuery = `${baseQuery} ${langQuery} ${queryWithOptions}`;
       
+       const promises = [];
+
       const safeFetch = (url: string) => {
         return fetch(url)
           .then(async (res) => {
@@ -308,12 +310,85 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           });
       };
 
-      const res = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`);
+      promises.push(
+        safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`)
+      );
+
+      const hasJapaneseInput = /[ぁ-んァ-ン一-龠]/.test(queryWithOptions);
       
-      // Note: Japanese processing omitted for brevity in this fix, relying on default english/mixed results or basic formatting.
-      // If full Japanese patch logic is needed, paste the original logic here.
-      // For now, simple formatting:
-      setSearchResults(res.map((c:any) => formatCardData(c)));
+      if (language === 'ja' && hasJapaneseInput) {
+        let cleanQuery = queryWithOptions
+          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "")
+          .replace(/set:[a-zA-Z0-9]+/gi, "")
+          .replace(/s:[a-zA-Z0-9]+/gi, "")
+          .replace(/[()]/g, "")
+          .trim();
+
+        if (cleanQuery) {
+          const nameQuery = `${cleanQuery} lang:ja unique:prints`;
+          const oracleSearchPromise = safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}`)
+            .then(async (jaCards: any[]) => {
+              if (jaCards.length === 0) return [];
+              const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
+              const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
+              if (uniqueOracleIds.length === 0) return [];
+
+              const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
+              const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
+              
+              const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
+
+              return targetCards.map((engCard: any) => {
+                const originalJa = jaCards.find((ja: any) => ja.oracle_id === engCard.oracle_id);
+                if (originalJa) {
+                  const formattedJa = formatCardData(originalJa);
+                  return {
+                    ...engCard,
+                    printed_name: formattedJa.printed_name,
+                    card_faces: engCard.card_faces ? engCard.card_faces.map((face: any, idx: number) => ({
+                      ...face,
+                      printed_name: formattedJa.card_faces?.[idx]?.printed_name || face.printed_name
+                    })) : undefined
+                  };
+                }
+                return engCard;
+              });
+            });
+          promises.push(oracleSearchPromise);
+        }
+      }
+
+      const results = await Promise.all(promises);
+      const allCards = results.flat();
+      
+      const uniqueCardsMap = new Map();
+      allCards.forEach((c: any) => {
+        if (c && c.oracle_id) {
+          const existing = uniqueCardsMap.get(c.oracle_id);
+          const formattedNew = formatCardData(c);
+
+          if (!existing) {
+            uniqueCardsMap.set(c.oracle_id, formattedNew);
+          } else {
+            let replace = false;
+            if (existing.lang !== 'ja' && formattedNew.lang === 'ja') {
+              replace = true;
+            }
+            else if (existing.lang === formattedNew.lang) {
+              const numA = parseInt(existing.collector_number, 10);
+              const numB = parseInt(formattedNew.collector_number, 10);
+              if (!isNaN(numB) && (isNaN(numA) || numB < numA)) {
+                replace = true;
+              }
+            }
+            if (replace) {
+              uniqueCardsMap.set(c.oracle_id, formattedNew);
+            }
+          }
+        }
+      });
+
+      setSearchResults(Array.from(uniqueCardsMap.values()));
 
     } catch (error) {
       console.error("Search critical error:", error);
