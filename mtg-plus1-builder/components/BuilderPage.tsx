@@ -276,114 +276,104 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
     }
   };
 
-  // --- Search Logic ---
+// --- Search Logic ---
   const executeSearch = async (queryWithOptions: string) => {
-    if (!queryWithOptions) return;
+    // 完全に空の場合はリターン（全件表示したい場合はここを調整）
+    if (!queryWithOptions && queryWithOptions !== "") return;
+    
     setLoading(true);
     
     try {
+      // 1. ベースクエリの構築
       const targetSets = new Set(['fdn']); 
       if (selectedSet) targetSets.add(selectedSet);
       
       const setsQuery = Array.from(targetSets).map(s => `set:${s}`).join(" OR ");
-      const baseQuery = `(${setsQuery}) unique:prints`;
-      const langQuery = language === 'ja' ? `(lang:ja OR lang:en)` : `lang:en`;
       
-      const primaryQuery = `${baseQuery} ${langQuery} ${queryWithOptions}`;
+      // 検索時は常に「日/英」両方を許可する（検索ヒット漏れを防ぐため）
+      const baseQuery = `(${setsQuery}) (lang:ja OR lang:en) unique:prints`;
+      const primaryQuery = `${baseQuery} ${queryWithOptions}`;
       
-       const promises = [];
-
       const safeFetch = (url: string) => {
         return fetch(url)
           .then(async (res) => {
             if (res.status === 404) return [];
-            if (!res.ok) {
-              console.warn(`API Warning: ${res.status}`);
-              return [];
-            }
+            if (!res.ok) return [];
             const json = await res.json();
             return json.data || [];
           })
           .catch(e => {
-            console.error("Fetch failed:", e);
+            console.error(e);
             return [];
           });
       };
 
-      promises.push(
-        safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`)
-      );
-
-      const hasJapaneseInput = /[ぁ-んァ-ン一-龠]/.test(queryWithOptions);
+      // 2. メイン検索実行
+      const mainResults = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(primaryQuery)}`);
       
-      if (language === 'ja' && hasJapaneseInput) {
-        let cleanQuery = queryWithOptions
-          .replace(/\(s:[a-zA-Z0-9]+\s+OR\s+s:[a-zA-Z0-9]+\)/gi, "")
-          .replace(/set:[a-zA-Z0-9]+/gi, "")
-          .replace(/s:[a-zA-Z0-9]+/gi, "")
-          .replace(/[()]/g, "")
-          .trim();
+      let allCards = [...mainResults];
 
-        if (cleanQuery) {
-          const nameQuery = `${cleanQuery} lang:ja unique:prints`;
-          const oracleSearchPromise = safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(nameQuery)}`)
-            .then(async (jaCards: any[]) => {
-              if (jaCards.length === 0) return [];
-              const oracleIds = jaCards.map((c: any) => c.oracle_id).filter(Boolean);
-              const uniqueOracleIds = Array.from(new Set(oracleIds)).slice(0, 20);
-              if (uniqueOracleIds.length === 0) return [];
+      // 3. 【重要】言語補完パッチ (Language Patch)
+      // ページ設定が「日本語」なのに、結果に「英語」が含まれている場合、
+      // そのカードの日本語版を裏で取りに行って差し替える
+      if (language === 'ja') {
+        // 現在の結果で「英語版しかない」カードのOracle IDを抽出
+        const jaMap = new Set(allCards.filter((c: any) => c.lang === 'ja').map((c: any) => c.oracle_id));
+        const missingJaOracleIds = Array.from(new Set(
+          allCards
+            .filter((c: any) => c.lang === 'en' && !jaMap.has(c.oracle_id))
+            .map((c: any) => c.oracle_id)
+        )).slice(0, 50); // URL長制限考慮
 
-              const oracleQueryPart = uniqueOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
-              const targetSetQuery = `(${oracleQueryPart}) (${setsQuery}) unique:prints`;
-              
-              const targetCards = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(targetSetQuery)}`);
-
-              return targetCards.map((engCard: any) => {
-                const originalJa = jaCards.find((ja: any) => ja.oracle_id === engCard.oracle_id);
-                if (originalJa) {
-                  const formattedJa = formatCardData(originalJa);
-                  return {
-                    ...engCard,
-                    printed_name: formattedJa.printed_name,
-                    card_faces: engCard.card_faces ? engCard.card_faces.map((face: any, idx: number) => ({
-                      ...face,
-                      printed_name: formattedJa.card_faces?.[idx]?.printed_name || face.printed_name
-                    })) : undefined
-                  };
-                }
-                return engCard;
-              });
-            });
-          promises.push(oracleSearchPromise);
+        if (missingJaOracleIds.length > 0) {
+          // 不足している日本語版を一括検索
+          const idsQuery = missingJaOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
+          // ターゲットセット内の日本語版を指定
+          const patchQuery = `(${idsQuery}) (${setsQuery}) lang:ja unique:prints`;
+          
+          const patchResults = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(patchQuery)}`);
+          
+          // 結果に結合（後のマージ処理で優先される）
+          if (patchResults.length > 0) {
+            allCards = [...allCards, ...patchResults];
+          }
         }
       }
 
-      const results = await Promise.all(promises);
-      const allCards = results.flat();
-      
+      // 4. マージと優先順位付け (Deduplication with Priority)
       const uniqueCardsMap = new Map();
-      allCards.forEach((c: any) => {
-        if (c && c.oracle_id) {
-          const existing = uniqueCardsMap.get(c.oracle_id);
-          const formattedNew = formatCardData(c);
+      
+      allCards.forEach((rawCard: any) => {
+        if (!rawCard || !rawCard.oracle_id) return;
 
-          if (!existing) {
-            uniqueCardsMap.set(c.oracle_id, formattedNew);
-          } else {
-            let replace = false;
-            if (existing.lang !== 'ja' && formattedNew.lang === 'ja') {
-              replace = true;
-            }
-            else if (existing.lang === formattedNew.lang) {
-              const numA = parseInt(existing.collector_number, 10);
-              const numB = parseInt(formattedNew.collector_number, 10);
-              if (!isNaN(numB) && (isNaN(numA) || numB < numA)) {
-                replace = true;
-              }
-            }
-            if (replace) {
-              uniqueCardsMap.set(c.oracle_id, formattedNew);
-            }
+        const formattedNew = formatCardData(rawCard);
+        const existing = uniqueCardsMap.get(rawCard.oracle_id);
+
+        if (!existing) {
+          uniqueCardsMap.set(rawCard.oracle_id, formattedNew);
+        } else {
+          // === 優先順位の判定ロジック ===
+          let shouldReplace = false;
+
+          const isNewMatchLang = formattedNew.lang === language; // ページ設定と言語が一致するか
+          const isOldMatchLang = existing.lang === language;
+
+          // ルール1: ページ設定の言語を絶対優先
+          if (isNewMatchLang && !isOldMatchLang) {
+            shouldReplace = true;
+          } 
+          // ルール2: 言語条件が同じなら、その他の優先度（コレクション番号など）
+          else if (isNewMatchLang === isOldMatchLang) {
+             // 例: 番号が若い方を優先（通常版優先など）
+             const numA = parseInt(existing.collector_number, 10);
+             const numB = parseInt(formattedNew.collector_number, 10);
+             if (!isNaN(numB) && (isNaN(numA) || numB < numA)) {
+               shouldReplace = true;
+             }
+          }
+
+          if (shouldReplace) {
+            uniqueCardsMap.set(rawCard.oracle_id, formattedNew);
           }
         }
       });
