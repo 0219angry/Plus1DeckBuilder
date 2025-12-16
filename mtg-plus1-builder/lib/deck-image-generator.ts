@@ -414,17 +414,16 @@ export const generateDeckImageCanvas = async (config: DeckImageConfig): Promise<
   currentX += 80;
 
   // マナシンボル
-  for (const sym of activeManaSymbols) {
-      try {
-         const url = `https://svgs.scryfall.io/card-symbols/${sym}.svg`;
-         const img = await loadImage(url);
-         const size = 20;
-         ctx.drawImage(img, currentX - 10, statsY - 15, size, size);
-         ctx.textAlign = "left";
-         ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 14px sans-serif";
-         ctx.fillText(`${manaCount[sym]}`, currentX + 14, statsY + 5);
-         currentX += 50;
-      } catch(e) {}
+for (const sym of activeManaSymbols) {
+      // 描画ヘルパーを使用
+      const size = 22; // シンボルサイズ
+      drawManaSymbol(ctx, sym, currentX - 10, statsY - 15, size);
+
+      ctx.textAlign = "left";
+      ctx.fillStyle = "#cbd5e1"; ctx.font = "bold 14px sans-serif";
+      // テキスト位置調整
+      ctx.fillText(`${manaCount[sym]}`, currentX + 18, statsY + 5);
+      currentX += 50;
   }
 
   // メインデッキ描画
