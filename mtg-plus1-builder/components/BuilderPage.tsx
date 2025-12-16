@@ -648,6 +648,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
             />
           </Panel>
         </PanelGroup>
+        <Footer />
       </div>
 
       {/* =========================================
@@ -751,7 +752,6 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           deckId={deckId} editKey={editKey} 
         />
       )}
-      <Footer />
     </main>
   );
 }

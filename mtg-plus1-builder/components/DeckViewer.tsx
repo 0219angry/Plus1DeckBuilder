@@ -177,6 +177,7 @@ export default function DeckViewer({ data }: DeckViewerProps) {
             />
           </Panel>
         </PanelGroup>
+        <Footer />
       </div>
 
       {/* =========================================
@@ -266,7 +267,7 @@ export default function DeckViewer({ data }: DeckViewerProps) {
           </button>
         </div>
       </div>
-      <Footer />
+      
     </main>
   );
 }
