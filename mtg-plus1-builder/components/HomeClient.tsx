@@ -6,11 +6,12 @@ import {
   Layers,
   ArrowRight, 
   ImageIcon, 
-  AlertTriangle, 
+  AlertTriangle,
   Filter,           // PLUS1検索用
   LayoutDashboard,  // 管理用
   Lock,             // 公開設定用
-  Gamepad2          // アリーナ用 (Game Controller icon)
+  Gamepad2,         // アリーナ用 (Game Controller icon)
+  Smartphone        // スマホ版リンク用
 } from "lucide-react";
 import Footer from "@/components/Footer";
 import ExpansionMarquee from "@/components/ExpansionMarquee";
@@ -90,20 +91,27 @@ export default function LandingPage() {
               「基本セット(Foundations)」+「好きなエキスパンション1つ」。<br/>
               シンプルで奥深い限定構築戦のための、専用デッキビルダー。
             </p>
-            
+
             <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-              <Link 
+              <Link
                 href="/builder"
                 className="inline-flex items-center justify-center gap-2 bg-white text-slate-900 px-8 py-4 rounded-full font-bold text-lg hover:bg-blue-50 transition-colors shadow-xl"
               >
                 デッキを作る
                 <ArrowRight size={20} />
               </Link>
-              <Link 
+              <Link
                 href="/banned-cards"
                 className="inline-flex items-center justify-center gap-2 bg-slate-800 text-white px-8 py-4 rounded-full font-bold text-lg border border-slate-700 hover:bg-slate-700 transition-colors"
               >
                 禁止リストを確認
+              </Link>
+              <Link
+                href="/mobile"
+                className="inline-flex items-center justify-center gap-2 bg-slate-900 text-white px-8 py-4 rounded-full font-bold text-lg border border-slate-800 hover:border-blue-500/60 hover:text-blue-100 transition-colors"
+              >
+                <Smartphone size={20} />
+                スマホ版を見る
               </Link>
             </div>
           </div>
