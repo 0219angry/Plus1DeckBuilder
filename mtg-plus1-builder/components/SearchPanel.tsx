@@ -15,7 +15,18 @@ type Props = {
 
 // --- 定数・辞書定義 ---
 
-// マナシンボル
+// マナシンボルのスタイル定義 (Tailwind CSS)
+// 画像を使わず、CSSだけでシンボルを表現します
+const MANA_STYLES: Record<string, string> = {
+  W: "bg-yellow-100 text-gray-800 border-yellow-300",
+  U: "bg-blue-600 text-white border-blue-800",
+  B: "bg-gray-800 text-white border-gray-950",
+  R: "bg-red-600 text-white border-red-800",
+  G: "bg-green-600 text-white border-green-800",
+  C: "bg-slate-400 text-gray-900 border-slate-500",
+};
+
+// マナボタン設定
 const MANA_BUTTONS = [
   { value: "w", symbol: "W", glow: "shadow-yellow-500/50" },
   { value: "u", symbol: "U", glow: "shadow-blue-500/50" },
@@ -108,13 +119,12 @@ export default function SearchPanel({
   onAdd, 
   language,
   expansionSetCode = "neo",
-  expansionSetName = "Kamigawa: Neon Dynasty" // デフォルト値
+  expansionSetName = "Kamigawa: Neon Dynasty" 
 }: Props) {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [query, setQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
 
-  // 現在の言語設定に基づいたテキストセットを取得
   const currentLang = (language === "en" ? "en" : "ja") as "ja" | "en";
   const t = UI_TEXT[currentLang];
 
@@ -177,7 +187,6 @@ export default function SearchPanel({
     if (manaValue) finalQuery += ` mv=${manaValue}`;
     if (rarity) finalQuery += ` r:${rarity}`;
 
-    // セットフィルターの適用
     if (setFilter === "fdn") {
       finalQuery += ` s:fdn`;
     } else if (setFilter === "expansion") {
@@ -246,30 +255,31 @@ export default function SearchPanel({
                 <div className="flex gap-2">
                   {MANA_BUTTONS.map((btn) => {
                     const isSelected = selectedColors.includes(btn.value);
+                    const styleClass = MANA_STYLES[btn.symbol]; // 色ごとのスタイルを取得
+
                     return (
                       <button
                         key={btn.value}
                         onClick={() => toggleColor(btn.value)}
                         className={`
                           relative w-7 h-7 rounded-full transition-all duration-200 ease-in-out
+                          flex items-center justify-center border font-serif font-bold text-sm select-none shadow-sm
+                          ${styleClass}
                           ${isSelected 
-                            ? `scale-110 opacity-100 grayscale-0 shadow-lg ${btn.glow}` 
-                            : "opacity-40 grayscale hover:opacity-70 hover:grayscale-0"
+                            ? `scale-110 opacity-100 ring-2 ring-white/20 ${btn.glow}` 
+                            : "opacity-40 hover:opacity-80 scale-95"
                           }
                         `}
                       >
-                        <img
-                          src={`https://svgs.scryfall.io/card-symbols/${btn.symbol}.svg`}
-                          alt={btn.symbol}
-                          className="w-full h-full drop-shadow-sm"
-                        />
+                        {/* 画像タグを削除し、文字を表示 */}
+                        {btn.symbol}
                       </button>
                     );
                   })}
                 </div>
               </div>
 
-              {/* セット選択 (右側に配置してスペース有効活用) */}
+              {/* セット選択 */}
               <div className="flex-1 min-w-[180px]">
                  <label className="text-xs text-slate-400 block mb-1 font-bold">{t.setLabel}</label>
                  <select 
@@ -280,14 +290,13 @@ export default function SearchPanel({
                    <option value="all">{t.setAll}</option>
                    <option value="fdn">{t.setFdn}</option>
                    <option value="expansion">
-                     {/* ★修正: セット名を表示 */}
                      {expansionSetName} ({expansionSetCode.toUpperCase()})
                    </option>
                  </select>
               </div>
             </div>
 
-            {/* --- 2行目: カードタイプ (維持) --- */}
+            {/* --- 2行目: カードタイプ --- */}
             <div>
               <label className="text-xs text-slate-400 block mb-1 font-bold">{t.type}</label>
               <div className="flex flex-wrap gap-1">
@@ -312,9 +321,9 @@ export default function SearchPanel({
               </div>
             </div>
 
-            {/* --- 3行目: サブタイプ / マナ総量 / レアリティ (グリッドでまとめる) --- */}
+            {/* --- 3行目: サブタイプ / マナ総量 / レアリティ --- */}
             <div className="grid grid-cols-12 gap-3 items-end">
-              {/* サブタイプ (幅広) */}
+              {/* サブタイプ */}
               <div className="col-span-6 sm:col-span-5 relative">
                  <div className="flex justify-between items-end mb-1">
                    <label className="text-xs text-slate-400 font-bold">{t.subtype}</label>
@@ -341,7 +350,7 @@ export default function SearchPanel({
                  </div>
               </div>
 
-              {/* マナ総量 (幅狭) */}
+              {/* マナ総量 */}
               <div className="col-span-3 sm:col-span-3">
                 <label className="text-xs text-slate-400 block mb-1 font-bold">{t.manaValue}</label>
                 <input
@@ -353,7 +362,7 @@ export default function SearchPanel({
                 />
               </div>
 
-              {/* レアリティ (中くらい) */}
+              {/* レアリティ */}
               <div className="col-span-3 sm:col-span-4">
                  <label className="text-xs text-slate-400 block mb-1 font-bold">{t.rarity}</label>
                  <select 
