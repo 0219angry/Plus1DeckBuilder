@@ -648,6 +648,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
             />
           </Panel>
         </PanelGroup>
+        <Footer />
       </div>
 
       {/* =========================================
