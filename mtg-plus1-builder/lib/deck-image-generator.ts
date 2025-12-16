@@ -55,6 +55,17 @@ const wrapText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number,
   return lines;
 };
 
+// マナシンボルの色定義
+const MANA_PALETTE: Record<string, { bg: string; text: string; border: string }> = {
+  W: { bg: "#fef9c3", text: "#422006", border: "#fde047" }, // yellow-100
+  U: { bg: "#2563eb", text: "#ffffff", border: "#1d4ed8" }, // blue-600
+  B: { bg: "#1f2937", text: "#ffffff", border: "#000000" }, // gray-800
+  R: { bg: "#dc2626", text: "#ffffff", border: "#991b1b" }, // red-600
+  G: { bg: "#16a34a", text: "#ffffff", border: "#166534" }, // green-600
+  C: { bg: "#94a3b8", text: "#0f172a", border: "#64748b" }, // slate-400
+  X: { bg: "#e2e8f0", text: "#0f172a", border: "#cbd5e1" },
+};
+
 // マナシンボルをCanvasに直接描画する関数
 const drawManaSymbol = (ctx: CanvasRenderingContext2D, symbol: string, x: number, y: number, size: number) => {
   const palette = MANA_PALETTE[symbol] || MANA_PALETTE.X;
