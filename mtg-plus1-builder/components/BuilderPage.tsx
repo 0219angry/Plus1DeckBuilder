@@ -335,7 +335,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
             const batchIds = missingJaOracleIds.slice(i, i + BATCH_SIZE);
             
             const idsQuery = batchIds.map(id => `oracle_id:${id}`).join(" OR ");
-            const patchQuery = `(${idsQuery}) (${setsQuery}) lang:ja unique:prints`;
+            const patchQuery = `(${idsQuery}) lang:ja unique:prints`;
             
             // パッチ検索実行 (awaitで順次実行してサーバー負荷を抑える)
             const patchResults = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(patchQuery)}`);
@@ -365,10 +365,30 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           const isNewMatchLang = formattedNew.lang === language; // ページ設定と言語が一致するか
           const isOldMatchLang = existing.lang === language;
 
-          // ルール1: ページ設定の言語を絶対優先
+          const isTargetSet = (setCode: string) => targetSets.has(setCode);
+
+          // ケースA: 英語FDN版(existing) が既にあって、後から 日本語過去版(formattedNew) が来た場合
           if (isNewMatchLang && !isOldMatchLang) {
-            shouldReplace = true;
-          } 
+            
+            // ★重要判定: 「既存はFDNだが、新しい日本語版はFDNではない（過去のカード）」場合
+            if (isTargetSet(existing.set) && !isTargetSet(formattedNew.set)) {
+              
+              // FDNのカード(existing)をベースにして、テキスト情報だけ日本語(formattedNew)で上書きする
+              const hybridCard = {
+                ...existing, // 1. ベースはFDN（画像、セット、番号、ID、リーガル情報はこれで完璧）
+
+                // 2. テキスト情報だけ日本語版から注入
+                name: formattedNew.name,
+                printed_name: formattedNew.printed_name ?? formattedNew.name,
+              };
+
+              uniqueCardsMap.set(rawCard.oracle_id, hybridCard);
+            } else {
+              // Scryfallが更新されて、本当にFDNの日本語データが来た場合などは、素直に全部置き換える
+              uniqueCardsMap.set(rawCard.oracle_id, formattedNew);
+            }
+            
+          }
           // ルール2: 言語条件が同じなら、その他の優先度（コレクション番号など）
           else if (isNewMatchLang === isOldMatchLang) {
              // 例: 番号が若い方を優先（通常版優先など）
