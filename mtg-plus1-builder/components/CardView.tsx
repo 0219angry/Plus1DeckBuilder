@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Card, DeckCard } from "@/types";
-import { PlusCircle, MinusCircle, AlertTriangle, Plus, Minus, Star, Ban } from "lucide-react";
+import { PlusCircle, MinusCircle, AlertTriangle, Plus, Minus, Star, Ban, CheckCircle2 } from "lucide-react"; // CheckCircle2を追加
 import ManaCost from "./ManaCost";
 
 type Props<T extends Card> = {
@@ -14,7 +14,7 @@ type Props<T extends Card> = {
   validationErrors?: Record<string, string>;
   keyCardIds?: string[];
   onToggleKeyCard?: (id: string) => void;
-  readOnly?: boolean; // ★追加: 閲覧専用フラグ
+  readOnly?: boolean;
 };
 
 // --- カード画像プレビュー用ポータル (変更なし) ---
@@ -94,7 +94,7 @@ export default function CardView<T extends Card>({
   validationErrors = {},
   keyCardIds = [], 
   onToggleKeyCard,
-  readOnly = false, // デフォルトfalse
+  readOnly = false,
 }: Props<T>) {
 
   const getImageUrl = (card: Card) => {
@@ -127,7 +127,13 @@ export default function CardView<T extends Card>({
   const hoverTimeout = useRef<NodeJS.Timeout | null>(null);
   const [activeError, setActiveError] = useState<{ message: string, rect: DOMRect } | null>(null);
 
+  // ★追加: アクション時のフィードバック用State (フラッシュさせるカードID)
+  const [flashingCardId, setFlashingCardId] = useState<string | null>(null);
+
   const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, imageUrl: string | undefined) => {
+    // ★修正: モバイル幅(768px未満)の場合はプレビューを表示しない
+    if (window.innerWidth < 768) return;
+
     if (hoverTimeout.current) {
       clearTimeout(hoverTimeout.current);
     }
@@ -178,9 +184,25 @@ export default function CardView<T extends Card>({
 
   const handleQuantityDecrease = (card: T, currentQuantity: number) => {
     if (currentQuantity <= 1) {
-      onAction(card);
+      handleActionWithFeedback(card);
     } else {
       onQuantityChange?.(card, -1);
+    }
+  };
+
+  // ★追加: アクション実行時にフィードバックを表示するラッパー関数
+  const handleActionWithFeedback = (card: T) => {
+    if (readOnly) return;
+
+    // 元のアクションを実行
+    onAction(card);
+
+    // 追加(add)の場合、視覚的フィードバックを与える
+    if (actionType === "add") {
+      setFlashingCardId(card.id);
+      setTimeout(() => {
+        setFlashingCardId(null);
+      }, 500); // 0.5秒後に消す
     }
   };
 
@@ -195,11 +217,14 @@ export default function CardView<T extends Card>({
           const isKeyCard = keyCardIds.includes(card.id);
           const error = validationErrors[card.id];
           const isBanned = error?.includes("BANNED");
+          
+          // ★追加: フラッシュ中かどうか
+          const isFlashing = flashingCardId === card.id;
 
           return (
             <div
               key={`${card.id}-${idx}`}
-              onClick={() => !readOnly && onAction(card)} // readOnlyなら反応しない
+              onClick={() => handleActionWithFeedback(card)} // ラッパー関数を使用
               className={`
                 relative group
                 ${readOnly ? "cursor-default" : "cursor-pointer hover:scale-105 transition-transform"}
@@ -207,7 +232,10 @@ export default function CardView<T extends Card>({
               onMouseEnter={(e) => handleMouseEnter(e, imageUrl)}
               onMouseLeave={handleMouseLeave}
             >
-              <div className={`relative aspect-[5/7] rounded-md overflow-hidden shadow-sm transition-transform hover:z-10 ${error ? "ring-2 ring-red-500" : "bg-slate-800"}`}>
+              <div className={`relative aspect-[5/7] rounded-md overflow-hidden shadow-sm transition-all duration-300 hover:z-10 
+                ${error ? "ring-2 ring-red-500" : "bg-slate-800"}
+                ${isFlashing ? "ring-4 ring-green-500 scale-105 brightness-110" : ""} 
+              `}>
                 {imageUrl ? (
                   <img
                     src={imageUrl}
@@ -218,6 +246,13 @@ export default function CardView<T extends Card>({
                 ) : (
                   <div className="w-full h-full flex items-center justify-center p-1 text-center text-[10px] text-slate-400 bg-slate-800">
                     {displayName}
+                  </div>
+                )}
+
+                {/* フラッシュ時のオーバーレイアイコン */}
+                {isFlashing && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-green-500/20 z-20 animate-in fade-in zoom-in duration-200">
+                    <CheckCircle2 className="text-white w-10 h-10 drop-shadow-lg" />
                   </div>
                 )}
 
@@ -269,7 +304,7 @@ export default function CardView<T extends Card>({
                 )}
 
                 {/* 検索結果（非デッキエリア）用の追加ボタンオーバーレイ (ReadOnly時は非表示) */}
-                {!isDeckArea && !readOnly && (
+                {!isDeckArea && !readOnly && !isFlashing && (
                   <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center pointer-events-none">
                     {actionType === "remove" ? (
                       <MinusCircle className="text-red-400 w-8 h-8 drop-shadow-lg" />
@@ -283,19 +318,19 @@ export default function CardView<T extends Card>({
               {/* デッキエリア用の操作ボタン（グリッド下） - ReadOnly時は非表示 */}
               {isDeckArea && quantity > 0 && !readOnly && (
                 <div className="mt-1 flex justify-center items-center gap-0.5 bg-slate-800/90 rounded border border-slate-700 p-0.5 shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); handleQuantityDecrease(card, quantity); }}
-                     className="p-0.5 hover:bg-slate-700 text-slate-400 hover:text-red-400 rounded transition-colors"
-                   >
-                     <Minus size={12} />
-                   </button>
-                   <span className="text-[10px] font-bold w-4 text-center text-white select-none">{quantity}</span>
-                   <button 
-                     onClick={(e) => { e.stopPropagation(); onQuantityChange?.(card, 1); }}
-                     className="p-0.5 hover:bg-slate-700 text-slate-400 hover:text-green-400 rounded transition-colors"
-                   >
-                     <Plus size={12} />
-                   </button>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); handleQuantityDecrease(card, quantity); }}
+                      className="p-0.5 hover:bg-slate-700 text-slate-400 hover:text-red-400 rounded transition-colors"
+                    >
+                      <Minus size={12} />
+                    </button>
+                    <span className="text-[10px] font-bold w-4 text-center text-white select-none">{quantity}</span>
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); onQuantityChange?.(card, 1); }}
+                      className="p-0.5 hover:bg-slate-700 text-slate-400 hover:text-green-400 rounded transition-colors"
+                    >
+                      <Plus size={12} />
+                    </button>
                 </div>
               )}
             </div>
@@ -325,6 +360,9 @@ export default function CardView<T extends Card>({
           const displayName = getCardName(card);
           const error = validationErrors[card.id];
           const isBanned = error?.includes("BANNED");
+          
+          // ★追加: フラッシュ中かどうか
+          const isFlashing = flashingCardId === card.id;
 
           return (
             <li
@@ -332,20 +370,22 @@ export default function CardView<T extends Card>({
               onMouseEnter={(e) => handleMouseEnter(e, imageUrl)}
               onMouseLeave={handleMouseLeave}
               // readOnlyならアクション無効、DeckAreaならボタン操作のみとするため行クリック無効
-              onClick={() => !isDeckArea && !readOnly && onAction(card)}
+              onClick={() => !isDeckArea && !readOnly && handleActionWithFeedback(card)}
               className={`
-                relative flex justify-between items-center py-1 px-2 rounded border group select-none transition-colors
+                relative flex justify-between items-center py-1 px-2 rounded border group select-none transition-all duration-300
                 ${error 
                   ? "border-red-500 bg-red-950/30"
-                  : "bg-slate-800/80 border-transparent"
+                  : isFlashing 
+                    ? "bg-green-500/30 border-green-400"  // ★追加: フラッシュ時のスタイル
+                    : "bg-slate-800/80 border-transparent"
                 }
-                ${!readOnly && !error ? "hover:border-slate-600 hover:bg-slate-700 cursor-pointer" : ""}
+                ${!readOnly && !error && !isFlashing ? "hover:border-slate-600 hover:bg-slate-700 cursor-pointer" : ""}
                 ${readOnly ? "cursor-default" : ""}
               `}
             >
               {/* キーカードマーク (DeckAreaのみ) */}
               {isDeckArea && (
-                 <>
+                  <>
                     {/* ReadOnly: キーカードなら静的表示 */}
                     {readOnly && isKeyCard && (
                         <div className="p-1 rounded shrink-0 mr-1 text-yellow-400">
@@ -382,6 +422,11 @@ export default function CardView<T extends Card>({
                 <span className={`truncate font-medium text-sm ${error ? "text-red-200" : "text-slate-200"}`}>
                   {displayName}
                 </span>
+                
+                {/* ★追加: リストモードでの追加完了アイコン */}
+                {isFlashing && (
+                  <CheckCircle2 size={16} className="text-green-400 ml-2 animate-in fade-in zoom-in" />
+                )}
               </div>
 
               {error && (
@@ -427,7 +472,7 @@ export default function CardView<T extends Card>({
                         ) : (
                         <button 
                             type="button"
-                            onClick={(e) => { e.stopPropagation(); onAction(card); }}
+                            onClick={(e) => { e.stopPropagation(); handleActionWithFeedback(card); }}
                             className="text-slate-500 hover:text-white p-1 transition-colors ml-1"
                         >
                             {actionType === "remove" ? (
