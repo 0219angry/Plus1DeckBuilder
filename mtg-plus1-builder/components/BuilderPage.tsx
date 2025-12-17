@@ -365,35 +365,26 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           const isNewMatchLang = formattedNew.lang === language; // ページ設定と言語が一致するか
           const isOldMatchLang = existing.lang === language;
 
+          const isTargetSet = (setCode: string) => targetSets.has(setCode);
+
           // ケースA: 英語FDN版(existing) が既にあって、後から 日本語過去版(formattedNew) が来た場合
           if (isNewMatchLang && !isOldMatchLang) {
             
-            // 合成判定: 「既存＝ターゲット(FDN)」「新規＝ターゲット外(過去セット)」の場合
-            if (targetSets.has(existing.set) && !targetSets.has(formattedNew.set)) {
+            // ★重要判定: 「既存はFDNだが、新しい日本語版はFDNではない（過去のカード）」場合
+            if (isTargetSet(existing.set) && !isTargetSet(formattedNew.set)) {
               
-              const mergedCard = {
-                // 1. ベースは「日本語版(過去)」のデータ（名前、テキスト、タイプ行など）
-                ...formattedNew, 
+              // FDNのカード(existing)をベースにして、テキスト情報だけ日本語(formattedNew)で上書きする
+              const hybridCard = {
+                ...existing, // 1. ベースはFDN（画像、セット、番号、ID、リーガル情報はこれで完璧）
 
-                // 2. 物理的な情報（セット、番号、リーガル情報）は FDN版(existing) で上書き
-                id: existing.id,                 // IDはFDNのものを使う（Scryfallへのリンク等がズレないように）
-                set: existing.set,               // "fdn"
-                set_name: existing.set_name,     // "Foundations"
-                collector_number: existing.collector_number,
-                rarity: existing.rarity,         // 再録でレアリティが変わる場合があるためFDNに合わせる
-                prices: existing.prices,         // 価格情報もFDNのもの
-                legalities: existing.legalities, // スタンダード使用可否
-                
-                // 3. ★ここが重要: 画像は FDN版(existing) を強制的に使う
-                image_uris: existing.image_uris,
-                
-                // ※両面カード等の場合、card_faces内の画像もexistingのものを使う必要がありますが、
-                // 簡易的にはまずこれでボロスの魔除け等は解決します。
+                // 2. テキスト情報だけ日本語版から注入
+                name: formattedNew.name,
+                printed_name: formattedNew.printed_name ?? formattedNew.name,
               };
 
-              uniqueCardsMap.set(rawCard.oracle_id, mergedCard);
+              uniqueCardsMap.set(rawCard.oracle_id, hybridCard);
             } else {
-              // 通常の置換
+              // Scryfallが更新されて、本当にFDNの日本語データが来た場合などは、素直に全部置き換える
               uniqueCardsMap.set(rawCard.oracle_id, formattedNew);
             }
             
