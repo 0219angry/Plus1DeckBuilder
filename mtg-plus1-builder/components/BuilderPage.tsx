@@ -313,29 +313,36 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
       
       let allCards = [...mainResults];
 
-      // 3. 【重要】言語補完パッチ (Language Patch)
-      // ページ設定が「日本語」なのに、結果に「英語」が含まれている場合、
-      // そのカードの日本語版を裏で取りに行って差し替える
+// 3. 【重要】言語補完パッチ (Language Patch)
       if (language === 'ja') {
-        // 現在の結果で「英語版しかない」カードのOracle IDを抽出
+        // 現在の結果で「日本語版」が存在するカードのIDを記録
         const jaMap = new Set(allCards.filter((c: any) => c.lang === 'ja').map((c: any) => c.oracle_id));
+        
+        // 「英語版はあるが、日本語版がまだリストにない」カードのIDを抽出
+        // ★修正点: ここで .slice(0, 50) を削除し、全量を取得します
         const missingJaOracleIds = Array.from(new Set(
           allCards
             .filter((c: any) => c.lang === 'en' && !jaMap.has(c.oracle_id))
             .map((c: any) => c.oracle_id)
-        )).slice(0, 50); // URL長制限考慮
+        ));
 
         if (missingJaOracleIds.length > 0) {
-          // 不足している日本語版を一括検索
-          const idsQuery = missingJaOracleIds.map(id => `oracle_id:${id}`).join(" OR ");
-          // ターゲットセット内の日本語版を指定
-          const patchQuery = `(${idsQuery}) (${setsQuery}) lang:ja unique:prints`;
-          
-          const patchResults = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(patchQuery)}`);
-          
-          // 結果に結合（後のマージ処理で優先される）
-          if (patchResults.length > 0) {
-            allCards = [...allCards, ...patchResults];
+          // ★修正点: URLの長さ制限（HTTP 414エラー）を防ぐため、バッチサイズごとに分割してリクエスト
+          const BATCH_SIZE = 50; 
+
+          for (let i = 0; i < missingJaOracleIds.length; i += BATCH_SIZE) {
+            // 今回処理するIDの塊を作成
+            const batchIds = missingJaOracleIds.slice(i, i + BATCH_SIZE);
+            
+            const idsQuery = batchIds.map(id => `oracle_id:${id}`).join(" OR ");
+            const patchQuery = `(${idsQuery}) (${setsQuery}) lang:ja unique:prints`;
+            
+            // パッチ検索実行 (awaitで順次実行してサーバー負荷を抑える)
+            const patchResults = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(patchQuery)}`);
+            
+            if (patchResults.length > 0) {
+              allCards = [...allCards, ...patchResults];
+            }
           }
         }
       }
