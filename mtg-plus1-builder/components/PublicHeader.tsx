@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useAuth } from "@/context/AuthContext";
-import { Plus, LayoutGrid, Map, Ban, ArrowLeft } from "lucide-react";
+import { Plus, Map, Ban, ArrowLeft, Sparkles } from "lucide-react";
 import UserMenu from "./UserMenu";
 import { ReactNode } from "react";
 
@@ -14,7 +14,7 @@ type PublicHeaderProps = {
 };
 
 export default function PublicHeader({ backHref, title, showNavLinks = true, customActions }: PublicHeaderProps) {
-  const { user, loading } = useAuth();
+  const { loading } = useAuth();
 
   return (
     <header className="border-b border-slate-800/50 bg-slate-950/70 backdrop-blur-md sticky top-0 z-10">
@@ -58,6 +58,15 @@ export default function PublicHeader({ backHref, title, showNavLinks = true, cus
         <div className="flex items-center gap-2 shrink-0">
           {showNavLinks && (
             <>
+              <Link
+                href="/decks"
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-bold text-slate-300 hover:text-green-200 hover:bg-slate-900 rounded-lg transition-colors"
+                title="新着デッキ"
+              >
+                <Sparkles size={16} />
+                <span>新着デッキ</span>
+              </Link>
+
               {/* 変更点1: 「禁止カード」「開発状況」は画面が広いとき(lg: 1024px以上)だけ表示する */}
               <Link
                 href="/banned-cards"

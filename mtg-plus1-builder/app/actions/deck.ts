@@ -4,6 +4,25 @@ import { db } from '@/lib/firebaseAdmin' // 前回の設定を利用
 import { v4 as uuidv4 } from 'uuid'
 import { DeckData, DeckResponse } from '@/types/deck'
 import { minifyDeckCards } from '@/lib/utils'
+import type { firestore } from 'firebase-admin'
+
+export type PublicDeckSummary = {
+  id: string;
+  name: string;
+  builderName: string;
+  userId?: string | null;
+  selectedSet: string;
+  language: string;
+  createdAt: string;
+  updatedAt?: string;
+  colors: string[];
+  archetype: string;
+  visibility: 'public';
+  mainCount: number;
+  sideboardCount: number;
+  keyCardIds: string[];
+  concepts?: string;
+};
 
 // ■ 新規保存 (Create)
 export async function createDeck(data: DeckData) {
@@ -50,12 +69,15 @@ export async function getDeck(id: string): Promise<DeckResponse | null> {
 
     if (!doc.exists) return null
 
-    const data = doc.data() as any
+    const data = doc.data() as firestore.DocumentData | undefined;
+
+    if (!data) return null;
 
     const visibility = data.visibility || 'limit';
 
     // editSecret を削除してクライアントに返す
-    const { editSecret, ...safeData } = data
+    const { editSecret: _editSecret, ...safeData } = data
+    void _editSecret;
 
     return {
       id: doc.id,
@@ -192,6 +214,67 @@ export async function getUserPublicDecks(userId: string) {
       .filter(deck => deck.visibility === 'public');
   } catch (error) {
     console.error("Public Fetch Error:", error);
+    return [];
+  }
+}
+
+export async function getLatestPublicDecks(limitCount = 36): Promise<PublicDeckSummary[]> {
+  if (!db) return [];
+
+  try {
+    const snapshot = await db.collection('decks')
+      .where('visibility', '==', 'public')
+      .orderBy('createdAt', 'desc')
+      .limit(limitCount)
+      .get();
+
+    const normalizeDate = (value: unknown) => {
+      if (typeof value === 'string') return value;
+      if (
+        value &&
+        typeof value === 'object' &&
+        'toDate' in value &&
+        typeof (value as { toDate?: () => Date }).toDate === 'function'
+      ) {
+        return (value as { toDate: () => Date }).toDate().toISOString();
+      }
+      return null;
+    };
+
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+
+      const createdAt = normalizeDate(data.createdAt) || normalizeDate(data.updatedAt) || new Date().toISOString();
+      const updatedAt = normalizeDate(data.updatedAt) || undefined;
+
+      const mainCount = Array.isArray(data.cards) 
+        ? data.cards.reduce((sum, card) => sum + (card.quantity || 0), 0) 
+        : 0;
+
+      const sideboardCount = Array.isArray(data.sideboard) 
+        ? data.sideboard.reduce((sum, card) => sum + (card.quantity || 0), 0) 
+        : 0;
+
+      return {
+        id: doc.id,
+        name: data.name || "Untitled",
+        builderName: data.builderName || "Unknown Builder",
+        userId: data.userId || null,
+        selectedSet: data.selectedSet || "-",
+        language: data.language || "-",
+        createdAt,
+        updatedAt,
+        colors: data.colors || [],
+        archetype: data.archetype || "",
+        visibility: 'public' as const,
+        mainCount,
+        sideboardCount,
+        keyCardIds: Array.isArray(data.keyCardIds) ? data.keyCardIds : [],
+        concepts: data.concepts || "",
+      };
+    });
+  } catch (error) {
+    console.error("Latest Public Decks Fetch Error:", error);
     return [];
   }
 }
