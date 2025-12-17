@@ -365,10 +365,39 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
           const isNewMatchLang = formattedNew.lang === language; // ページ設定と言語が一致するか
           const isOldMatchLang = existing.lang === language;
 
-          // ルール1: ページ設定の言語を絶対優先
+          // ケースA: 英語FDN版(existing) が既にあって、後から 日本語過去版(formattedNew) が来た場合
           if (isNewMatchLang && !isOldMatchLang) {
-            shouldReplace = true;
-          } 
+            
+            // 合成判定: 「既存＝ターゲット(FDN)」「新規＝ターゲット外(過去セット)」の場合
+            if (targetSets.has(existing.set) && !targetSets.has(formattedNew.set)) {
+              
+              const mergedCard = {
+                // 1. ベースは「日本語版(過去)」のデータ（名前、テキスト、タイプ行など）
+                ...formattedNew, 
+
+                // 2. 物理的な情報（セット、番号、リーガル情報）は FDN版(existing) で上書き
+                id: existing.id,                 // IDはFDNのものを使う（Scryfallへのリンク等がズレないように）
+                set: existing.set,               // "fdn"
+                set_name: existing.set_name,     // "Foundations"
+                collector_number: existing.collector_number,
+                rarity: existing.rarity,         // 再録でレアリティが変わる場合があるためFDNに合わせる
+                prices: existing.prices,         // 価格情報もFDNのもの
+                legalities: existing.legalities, // スタンダード使用可否
+                
+                // 3. ★ここが重要: 画像は FDN版(existing) を強制的に使う
+                image_uris: existing.image_uris,
+                
+                // ※両面カード等の場合、card_faces内の画像もexistingのものを使う必要がありますが、
+                // 簡易的にはまずこれでボロスの魔除け等は解決します。
+              };
+
+              uniqueCardsMap.set(rawCard.oracle_id, mergedCard);
+            } else {
+              // 通常の置換
+              uniqueCardsMap.set(rawCard.oracle_id, formattedNew);
+            }
+            
+          }
           // ルール2: 言語条件が同じなら、その他の優先度（コレクション番号など）
           else if (isNewMatchLang === isOldMatchLang) {
              // 例: 番号が若い方を優先（通常版優先など）
