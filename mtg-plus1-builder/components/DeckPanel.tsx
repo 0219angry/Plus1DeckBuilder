@@ -237,13 +237,16 @@ export default function DeckPanel({
           )}
         </div>
 
-        <div className="flex justify-between items-center">
-          <div className="flex bg-slate-800 rounded p-1 border border-slate-700">
+        {/* コントロールバー：モバイル対応（縦並び、折り返し許可） */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-0">
+          {/* タブ (Main / Side) */}
+          <div className="flex bg-slate-800 rounded p-1 border border-slate-700 self-start">
             <button onClick={() => setActiveTab("main")} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === "main" ? "bg-blue-600 text-white" : "text-slate-400 hover:text-white"}`}>Main ({mainCount})</button>
             <button onClick={() => setActiveTab("side")} className={`px-3 py-1 rounded text-xs font-bold transition-colors ${activeTab === "side" ? "bg-orange-600 text-white" : "text-slate-400 hover:text-white"}`}>Side ({sideCount})</button>
           </div>
           
-          <div className="flex items-center gap-2">
+          {/* 操作ボタン群 (右寄せ・折り返し許可) */}
+          <div className="flex flex-wrap items-center justify-end gap-2 w-full sm:w-auto">
             
             {/* 編集系ボタンは readonly 時は非表示 */}
             {!readonly && (
