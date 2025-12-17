@@ -335,7 +335,7 @@ export default function BuilderPage({ initialData, deckId, editKey }: BuilderPag
             const batchIds = missingJaOracleIds.slice(i, i + BATCH_SIZE);
             
             const idsQuery = batchIds.map(id => `oracle_id:${id}`).join(" OR ");
-            const patchQuery = `(${idsQuery}) (${setsQuery}) lang:ja unique:prints`;
+            const patchQuery = `(${idsQuery}) lang:ja unique:prints`;
             
             // パッチ検索実行 (awaitで順次実行してサーバー負荷を抑える)
             const patchResults = await safeFetch(`https://api.scryfall.com/cards/search?q=${encodeURIComponent(patchQuery)}`);
