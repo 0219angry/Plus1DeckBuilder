@@ -117,10 +117,6 @@ function DeckSummaryCard({ deck }: { deck: PublicDeckSummary }) {
           <Layers size={14} className="text-slate-200" />
           サイド {deck.sideboardCount}枚
         </span>
-        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-slate-800/60 border border-slate-700">
-          <BookmarkCheck size={14} className="text-emerald-300" />
-          キーカード {deck.keyCardIds.length}枚
-        </span>
       </div>
 
       <div className="flex items-center gap-2">
