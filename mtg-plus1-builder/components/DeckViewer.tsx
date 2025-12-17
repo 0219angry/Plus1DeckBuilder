@@ -111,7 +111,7 @@ export default function DeckViewer({ data }: DeckViewerProps) {
       {/* =========================================
           Desktop View (md以上)
          ========================================= */}
-      <div className="hidden md:flex flex-1 overflow-hidden relative z-0">
+      <div className="hidden md:flex flex-col flex-1 overflow-hidden relative z-0">
         <PanelGroup direction="horizontal">
           
           {/* 左パネル: 情報 / 統計 / ソリティア */}
@@ -164,7 +164,7 @@ export default function DeckViewer({ data }: DeckViewerProps) {
           </PanelResizeHandle>
 
           {/* 右パネル: デッキリスト */}
-          <Panel defaultSize={60} minSize={30}>
+          <Panel defaultSize={60} minSize={30} className="flex flex-col">
             <DeckPanel 
               readonly={true}
               deck={data.cards} sideboard={data.sideboard} deckName={data.name} builderName={data.builderName || ""}
