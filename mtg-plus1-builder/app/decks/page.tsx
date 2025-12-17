@@ -23,6 +23,9 @@ function DeckSummaryCard({ deck }: { deck: PublicDeckSummary }) {
   const colorName = getDeckColorName(deck.colors, "ja");
   const updatedLabel = deck.updatedAt && deck.updatedAt !== deck.createdAt ? `更新: ${formatDate(deck.updatedAt)}` : null;
 
+  // セットコードを小文字に変換（URL用）
+  const setCode = deck.selectedSet.toLowerCase();
+
   return (
     <div
       className="group relative bg-slate-900/70 border border-slate-800 rounded-2xl p-5 flex flex-col gap-4 hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-900/20 transition-all duration-300"
@@ -33,9 +36,16 @@ function DeckSummaryCard({ deck }: { deck: PublicDeckSummary }) {
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-center gap-2 flex-wrap text-[11px] uppercase tracking-wide text-slate-400">
-            <span className="px-2 py-1 rounded-md bg-slate-950/60 border border-slate-800 font-bold">
+            <span className="pl-1.5 pr-2 py-1 rounded-md bg-slate-950/60 border border-slate-800 font-bold flex items-center gap-1.5">
+              {/* ScryfallからSVGを取得。invertで白く反転 */}
+              <img 
+                src={`https://svgs.scryfall.io/sets/${setCode}.svg`} 
+                alt={deck.selectedSet}
+                className="w-4 h-4 object-contain filter invert opacity-90"
+              />
               {deck.selectedSet}
             </span>
+            
             <span className="px-2 py-1 rounded-md bg-slate-950/60 border border-slate-800 font-bold">
               {deck.language}
             </span>
