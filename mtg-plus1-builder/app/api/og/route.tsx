@@ -49,10 +49,10 @@ export async function GET(request: Request) {
           >
             +1
           </div>
-          <div style={{ fontSize: '70px', fontWeight: 'bold', color: 'white', lineHeight: 1.1 }}>
+          <div style={{ display: 'flex', fontSize: '70px', fontWeight: 'bold', color: 'white', lineHeight: 1.1 }}>
             MtG PLUS1<br/>Deck Builder
           </div>
-          <div style={{ fontSize: '30px', color: '#94a3b8', marginTop: '30px' }}>
+          <div style={{ display: 'flex', fontSize: '30px', color: '#94a3b8', marginTop: '30px' }}>
             Simple, Fast, and Shareable Deck Builder
           </div>
         </div>
@@ -62,11 +62,12 @@ export async function GET(request: Request) {
     else if (type === 'profile') {
       content = (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          <div style={{ fontSize: '24px', color: '#60a5fa', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '4px' }}>
+          <div style={{ display: 'flex', fontSize: '24px', color: '#60a5fa', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '4px' }}>
             Deck Builder Profile
           </div>
           <div
             style={{
+              display: 'flex',
               fontSize: '70px',
               fontWeight: 'bold',
               backgroundImage: 'linear-gradient(90deg, #fff, #cbd5e1)',
@@ -78,6 +79,7 @@ export async function GET(request: Request) {
             {title}
           </div>
           <div style={{ 
+            display: 'flex',
             padding: '10px 30px', 
             background: '#1e293b', 
             borderRadius: '99px', 
@@ -105,13 +107,14 @@ export async function GET(request: Request) {
             >
               +1
             </div>
-            <div style={{ fontSize: '30px', fontWeight: 'bold', color: '#94a3b8' }}>
+            <div style={{ display: 'flex', fontSize: '30px', fontWeight: 'bold', color: '#94a3b8' }}>
               MtG PLUS1
             </div>
           </div>
           {/* デッキ名 */}
           <div
             style={{
+              display: 'flex',
               fontSize: '60px', fontWeight: 'bold',
               backgroundImage: 'linear-gradient(90deg, #fff, #cbd5e1)', backgroundClip: 'text', color: 'transparent',
               marginBottom: '20px', lineHeight: 1.2,
@@ -121,7 +124,7 @@ export async function GET(request: Request) {
           </div>
           {/* 製作者・フォーマット */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginTop: '10px' }}>
-             <div style={{ padding: '10px 24px', backgroundColor: '#1e293b', borderRadius: '999px', fontSize: '24px', color: '#e2e8f0', border: '1px solid #334155' }}>
+             <div style={{ display: 'flex', padding: '10px 24px', backgroundColor: '#1e293b', borderRadius: '999px', fontSize: '24px', color: '#e2e8f0', border: '1px solid #334155' }}>
                 Built by {subText || 'Anonymous'}
              </div>
           </div>
